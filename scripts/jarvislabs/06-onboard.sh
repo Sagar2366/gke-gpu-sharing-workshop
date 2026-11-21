@@ -12,7 +12,7 @@ cd "$(dirname "$0")"
 source ./jl.conf
 source ../../workshop.conf
 export KUBECONFIG="$PWD/out/admin.kubeconfig"
-CSV="${1:?usage: $0 attendees.csv}"
+CSV="${1:-$ATTENDEES_CSV}"; [[ -f "$CSV" ]] || { echo "attendee CSV not found: $CSV (set ATTENDEES_CSV in jl.conf)"; exit 1; }
 mkdir -p out/kubeconfigs
 CA=$(kubectl config view --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
 

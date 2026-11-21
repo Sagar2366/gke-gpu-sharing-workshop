@@ -1,48 +1,34 @@
 #!/usr/bin/env bash
-# 04-switch-strategy.sh: flip every attendee table GPU between time-sharing and MPS.
+# 04-switch-strategy.sh: LIVE step. Change how every table GPU is shared, in front of the room.
 #
-# On GKE these are two separate node pools. On Plan B each table has ONE GPU VM, so
-# the facilitator switches it between labs (the stage GPU t00 stays time-sharing):
+#   ./scripts/jarvislabs/04-switch-strategy.sh exclusive   # 1 GPU = 1 pod       (the default problem)
+#   ./scripts/jarvislabs/04-switch-strategy.sh ts          # time-slicing, 4 slots
+#   ./scripts/jarvislabs/04-switch-strategy.sh mps         # NVIDIA MPS, 4 shares
+#   ./scripts/jarvislabs/04-switch-strategy.sh hami        # HAMi: ask for GB of memory and % of compute
 #
-#   ./scripts/jarvislabs/04-switch-strategy.sh mps   # before Lab 4 (at the break)
-#   ./scripts/jarvislabs/04-switch-strategy.sh ts    # before Lab 6 (during Lab 5)
+#   ROLE=stage ./04-switch-strategy.sh mps   # only the stage GPU (for the MPS demo)
 #
-# Attendees must have deleted their pods first (Lab 3 and Lab 4 end with clean-up).
-# Any pod still on a table GPU is deleted by this script.
+# It's just node labels: NVIDIA's device plugin picks a new config (or steps aside for HAMi).
+# Attendee pods still on the table GPUs are deleted first. Takes ~1-2 min.
 set -euo pipefail
 cd "$(dirname "$0")"
 source ./jl.conf
+source ./lib.sh
 export KUBECONFIG="$PWD/out/admin.kubeconfig"
+MODE="${1:?usage: $0 exclusive|ts|mps|hami}"
+ROLE="${ROLE:-table}"
 
-case "${1:-}" in
-  ts)  cfg=ts4;  strategy=time-sharing ;;
-  mps) cfg=mps4; strategy=mps ;;
-  *)   echo "usage: $0 ts|mps"; exit 1 ;;
-esac
+[[ "$MODE" == "hami" ]] && ./05-install-hami.sh
 
-nodes=$(kubectl get nodes -l workshop.devfest/role=table -o jsonpath='{.items[*].metadata.name}')
-echo ">> Switching $(echo $nodes | wc -w) table GPUs to $strategy"
-
-for n in $nodes; do
-  # remove leftover attendee GPU pods on this node (not system pods)
-  kubectl get pods -A --field-selector spec.nodeName="$n" -l '!app.kubernetes.io/managed-by' \
+mapfile -t nodes < <(kubectl get nodes -l workshop.devfest/role="$ROLE" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
+echo ">> Switching ${#nodes[@]} ${ROLE} GPU(s) to: $MODE"
+for n in "${nodes[@]}"; do
+  kubectl get pods -A --field-selector spec.nodeName="$n" \
     -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{"\n"}{end}' \
-    | grep -E '^t[0-9]+-' | while read -r ns pod; do kubectl -n "$ns" delete pod "$pod" --wait=false; done || true
-  kubectl label node "$n" --overwrite >/dev/null \
-    nvidia.com/device-plugin.config="$cfg" \
-    cloud.google.com/gke-gpu-sharing-strategy="$strategy"
+    | grep -E '^t[0-9]+-' | while read -r ns pod; do kubectl -n "$ns" delete pod "$pod" --wait=false >/dev/null; done || true
+  set_gpu_mode "$n" "$MODE"
 done
 
-echo ">> Waiting for the device plugin to restart with the new config"
-for i in $(seq 1 30); do
-  ready=0; total=0
-  for n in $nodes; do
-    total=$((total+1))
-    [[ "$(kubectl get node "$n" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}')" == "4" ]] && ready=$((ready+1))
-  done
-  echo "   $ready/$total nodes advertise 4 shared GPUs"
-  [[ $ready == "$total" ]] && break
-  sleep 10
-done
-[[ "$strategy" == "mps" ]] && kubectl -n gpu-operator get pods | grep -i mps || true
-echo ">> Done: tables are now on $strategy"
+wait_for_slots "$(expected_slots "$MODE")" "${nodes[@]}" || echo "!! not all nodes ready yet; check ./status.sh"
+[[ "$MODE" == "mps" ]] && kubectl -n gpu-operator get pods | grep -i mps || true
+echo ">> Done: ${ROLE} GPUs are now in mode '$MODE'"

@@ -157,42 +157,34 @@ title: "Facilitator: build the workshop cluster on Jarvislabs (live)"
 
     All required checks pass. Open two terminals on the projector: one for the build, one for `WATCH=1 ./scripts/jarvislabs/status.sh` afterwards.
 
-!!! step "Run the build in presenter mode"
-    ```bash
-    export HF_TOKEN=hf_...
-    PAUSE=1 ./scripts/jarvislabs/up.sh
-    ```
+!!! step "Build it live, one script at a time"
+    Follow the workshop codelab's step 2 on the big screen. Each script does one thing, so you can stop and explain:
 
-    It pauses before each stage so you can explain it. While it runs, attendees open Cloud Shell and clone the repo
-    (the workshop's **Before you begin** step).
+    | # | Run | Show / say |
+    |---|---|---|
+    | 1 | `./scripts/jarvislabs/01-server.sh`, then `export KUBECONFIG=$PWD/scripts/jarvislabs/out/admin.kubeconfig` | "The control plane." `kubectl get nodes` |
+    | 2 | `./scripts/jarvislabs/02-gpu-nodes.sh` | "Each table's L4 joins." `kubectl get nodes` |
+    | 3 | `ssh root@<ip> nvidia-smi -L` and `kubectl describe node <node> \| grep nvidia.com/gpu` | **Problem:** the machine sees its GPU, Kubernetes doesn't. |
+    | 4 | `./scripts/jarvislabs/03-gpu-operator.sh` | **Fix:** the device plugin. `nvidia.com/gpu: 1` appears. |
+    | 5 | `./scripts/jarvislabs/03b-monitoring.sh` | Grafana is up. |
+    | 6 | `./scripts/jarvislabs/06-onboard.sh && ./scripts/jarvislabs/07-serve-kubeconfigs.sh` | Tell the room: *"run setup.sh now"*. |
 
-    | Stage | Say this while it runs |
-    |---|---|
-    | 1 · k3s server | "This is the control plane: API server, scheduler. On GKE, Google runs this for you." |
-    | 2 · Join GPU nodes | "Every table's L4 joins as a node. The driver's already on them; GKE installs that for you too." |
-    | 3 · GPU Operator | "The **device plugin** is what tells Kubernetes a node has GPUs. Its config decides sharing: `ts4` means one GPU shows up as 4." |
-    | 4 · Attendee access | "Each of you gets your own namespace and an access file." |
-    | 5 · Status | Point at `GPU=4` on every table node: "one physical GPU, four chairs". |
-
-    !!! see "You should see"
-        **CLUSTER READY**. Tell the room: *"Run `source scripts/attendee/setup.sh <table> <team>` now."*
+    `up.sh` runs all of these in one go (useful for rehearsals or recovering).
 
     ??? failure "A stage failed"
-        Read the last lines; fix the cause; resume with `FROM=<stage> ./scripts/jarvislabs/up.sh`. Every stage is safe to re-run.
-        Worst case: `YES=1 ./scripts/jarvislabs/reset.sh && ./scripts/jarvislabs/up.sh` rebuilds from scratch in ~15 min while you
-        present the time-sharing concepts.
+        Read the last lines, fix the cause, and re-run that script: each one is safe to re-run. Worst case:
+        `YES=1 ./scripts/jarvislabs/reset.sh && ./scripts/jarvislabs/up.sh` (~15 min).
 
 ## 6. During the workshop { data-mins="5" }
 
-!!! step "Switch the table GPUs between steps"
-    Each table has one GPU VM, so you switch it between strategies:
-
-    | When | Run |
+!!! step "Switch the GPUs as the story moves on"
+    | When (workshop step) | Run |
     |---|---|
-    | End of **Watch it in your monitoring** (everyone deletes pods) | `./scripts/jarvislabs/04-switch-strategy.sh mps` |
-    | During **Multi-instance GPU** (a demo on the MIG VM) | `./scripts/jarvislabs/04-switch-strategy.sh ts` |
+    | End of **4 · Problem: one pod, one whole GPU** | `./scripts/jarvislabs/04-switch-strategy.sh ts` |
+    | **6 · MPS and MIG** (demo) | `ROLE=stage ./scripts/jarvislabs/04-switch-strategy.sh mps` then `./scripts/jarvislabs/demo.sh mps`, then `./scripts/jarvislabs/demo.sh mig` |
+    | End of step 6 | `./scripts/jarvislabs/demo.sh clean` then `./scripts/jarvislabs/04-switch-strategy.sh hami` (installs HAMi the first time) |
 
-    Each switch takes ~1–2 minutes and deletes any leftover attendee pods on table GPUs.
+    Each switch takes ~1–2 minutes and deletes any leftover attendee pods on the table GPUs.
 
 !!! step extra "Finale"
     ```bash
@@ -213,8 +205,10 @@ title: "Facilitator: build the workshop cluster on Jarvislabs (live)"
 - [ ] `00-doctor.sh` shows no FAIL; `prep-hosts.sh` finishes on every VM.
 - [ ] `up.sh` finishes, and the time is noted: ______ min (target ≤ 15).
 - [ ] From Cloud Shell: kubeconfig download works, `kubectl` reaches 6443, Grafana opens at `$GRAFANA_URL`.
-- [ ] Table nodes show `GPU=4`; after `04-switch-strategy.sh mps` they still show 4 and an MPS control-daemon pod runs.
+- [ ] Table nodes start with `GPU=1` (exclusive); `04-switch-strategy.sh ts` gives 4; `ROLE=stage … mps` gives 4 on the stage GPU and `demo.sh mps` shows steady speeds.
+- [ ] `04-switch-strategy.sh hami` installs HAMi and table nodes show `GPU=10`; a probe with `nvidia.com/gpumem: 4000` sees ~3.9 GiB; memhog stops at its limit; burn with `gpucores: 25` is capped. Time the switch: ____ min.
+- [ ] Four Gemma servers with `gpumem: 5000` and vLLM's default memory setting all start on one L4 (HAMi makes vLLM see 5 GB). If not, add `--gpu-memory-utilization=0.85` to `/tmp/gemma.sh`.
 - [ ] MIG node shows **7** slices and a probe prints a `MIG` device. If MIG mode can't be enabled in the VM, show the MIG step as slides.
-- [ ] All workshop steps pass as an attendee, including four Gemma servers at 0.2 and the `UnexpectedAdmissionError`.
+- [ ] All workshop steps pass as an attendee, start to finish, in under 90 minutes.
 - [ ] `reset.sh` + `up.sh` rebuild works (your plan if something breaks on stage).
 - [ ] VM IPs survive a pause/resume, **or** you keep VMs running from the rehearsal to the session.

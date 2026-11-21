@@ -8,7 +8,7 @@
 # Stages:
 #   1  k3s server on the CPU VM                          (~1 min)
 #   2  join GPU VMs + load workshop image                (~3 min)
-#   3  GPU Operator, GKE-style labels, monitoring        (~8 min)
+#   3  GPU Operator (tables start in INITIAL_MODE, default exclusive) + monitoring  (~8 min)
 #   4  attendee namespaces + kubeconfigs, start serving  (~1 min)
 #   5  status check                                      (~1 min)
 #
@@ -30,7 +30,7 @@ banner 1 "Kubernetes control plane (k3s server)";            run 1 ./01-server.s
 export KUBECONFIG="$PWD/out/admin.kubeconfig"
 banner 2 "Join the GPU machines";                             run 2 ./02-gpu-nodes.sh
 banner 3 "NVIDIA GPU Operator, sharing configs, monitoring";  run 3 ./03-platform.sh
-banner 4 "Attendee access";                                   run 4 bash -c "./06-onboard.sh '$ATTENDEES_CSV' && ./07-serve-kubeconfigs.sh"
+banner 4 "Attendee access";                                   run 4 bash -c "./06-onboard.sh && ./07-serve-kubeconfigs.sh"
 banner 5 "Status";                                            run 5 ./status.sh
 
 printf "\n\033[1;42m  CLUSTER READY in %d min  \033[0m  Attendees can now run:  source scripts/attendee/setup.sh <table> <team>\n" $(( ($(date +%s)-T0)/60 ))

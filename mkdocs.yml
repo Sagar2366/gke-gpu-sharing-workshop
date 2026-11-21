@@ -69,7 +69,7 @@ nav:
   - Home: index.md
   - Codelabs:
       - "Foundations (start here)": codelabs/foundations.md
-      - "Workshop (Jarvislabs, on the day)": codelabs/gpu-sharing-jarvislabs.md
+      - "Workshop: from bare machines to shared GPUs": codelabs/gpu-sharing-jarvislabs.md
       - "Workshop (GKE edition)": codelabs/gpu-sharing-on-gke.md
       - "Take home: one Jarvislabs GPU VM": codelabs/jarvislabs-solo.md
       - "Take home: your own Google Cloud project": codelabs/own-project.md

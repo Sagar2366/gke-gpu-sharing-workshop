@@ -5,8 +5,12 @@ SEL = {
  'ts':  ['cloud.google.com/gke-gpu-sharing-strategy: time-sharing','cloud.google.com/gke-max-shared-clients-per-gpu: "4"','workshop.devfest/table: ${TABLE}'],
  'mps': ['cloud.google.com/gke-gpu-sharing-strategy: mps','workshop.devfest/table: ${TABLE}'],
  'mig': ['cloud.google.com/gke-gpu-partition-size: ${MIG_PARTITION}'],
+ # story flow (Jarvislabs): one GPU per table, mode switched by the instructor
+ 'ex':   ['workshop.devfest/gpu-mode: exclusive','workshop.devfest/table: ${TABLE}'],
+ 'tsj':  ['workshop.devfest/gpu-mode: time-sharing','workshop.devfest/table: ${TABLE}'],
+ 'hami': ['workshop.devfest/gpu-mode: hami','workshop.devfest/table: ${TABLE}'],
 }
-def pod(name, strat, command, env=(), gpus=1, restart=None, deadline=None, hostipc=None, requests=False, labels=None):
+def pod(name, strat, command, env=(), gpus=1, restart=None, deadline=None, hostipc=None, requests=False, labels=None, hami=None):
     if hostipc is None: hostipc = (strat=='mps')
     L=['kubectl apply -f - <<EOF','apiVersion: v1','kind: Pod','metadata:',f'  name: {name}']
     if labels: L.append(f'  labels: {labels}')
@@ -19,7 +23,8 @@ def pod(name, strat, command, env=(), gpus=1, restart=None, deadline=None, hosti
     L += ['    - {name: %s, value: "%s"}'%(k,v) for k,v in env]
     L.append('    resources:')
     if requests: L.append('      requests: {cpu: 500m, memory: 2Gi}')
-    L.append(f'      limits: {{nvidia.com/gpu: {gpus}}}')
+    lim = f'nvidia.com/gpu: {gpus}' + (f', nvidia.com/gpumem: {hami[0]}, nvidia.com/gpucores: {hami[1]}' if hami else '')
+    L.append(f'      limits: {{{lim}}}')
     L += ['    volumeMounts: [{name: scripts, mountPath: /scripts}]','  volumes:','  - name: scripts','    configMap: {name: gpu-scripts}','EOF']
     return L
 SNIPS = {
@@ -33,6 +38,13 @@ SNIPS = {
  'PROBE_MPS_NOIPC': lambda: pod('probe-noipc','mps','["python3", "/scripts/probe.py"]',restart='Never',deadline=90,hostipc=False),
  'PROBE_MPS': lambda: pod('probe','mps','["python3", "/scripts/probe.py"]',restart='Never'),
  'PROBE_MPS2': lambda: pod('probe2','mps','["python3", "/scripts/probe.py"]',restart='Never',gpus=2),
+ 'PROBE_EX':  lambda: pod('probe','ex','["bash", "-c", "nvidia-smi -L; python3 /scripts/probe.py"]',restart='Never'),
+ 'HOLD_EX':   lambda name: pod(name,'ex','["sleep", "infinity"]',labels='{app: hold}'),
+ 'BURN_TSJ':  lambda: pod('burn','tsj','["bash", "-c", "nvidia-smi -L; exec python3 /scripts/burn.py"]',[('DUTY','${DUTY:-1.0}')],labels='{app: burn, team: ${TEAM}}',requests=True),
+ 'MEMHOG_TSJ': lambda gib: pod('memhog','tsj','["python3", "/scripts/memhog.py"]',[('GIB',gib)]),
+ 'PROBE_HAMI': lambda: pod('probe','hami','["python3", "/scripts/probe.py"]',restart='Never',hami=('${GPU_MEM:-4000}','${GPU_CORES:-25}')),
+ 'BURN_HAMI': lambda: pod('burn','hami','["python3", "/scripts/burn.py"]',labels='{app: burn, team: ${TEAM}}',requests=True,hami=('4000','${GPU_CORES:-25}')),
+ 'MEMHOG_HAMI': lambda gib: pod('memhog','hami','["python3", "/scripts/memhog.py"]',[('GIB',gib)],hami=('${GPU_MEM:-4000}','25')),
  'PROBE_MIG': lambda: pod('probe-mig','mig','["bash", "-c", "/usr/local/nvidia/bin/nvidia-smi -L; python3 /scripts/probe.py"]',restart='Never'),
 }
 def block(lines, indent):

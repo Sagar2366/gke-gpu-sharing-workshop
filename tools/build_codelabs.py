@@ -129,7 +129,8 @@ def make_rewriter(link_map, page_maps=None):
 
 def main():
     subprocess.run([sys.executable, os.path.join(HERE, "render_labs.py")] +
-                   sorted(os.path.join(HERE, "lab-src", f) for f in os.listdir(os.path.join(HERE, "lab-src"))),
+                   sorted(os.path.join(HERE, d, f) for d in ("lab-src", "story-src")
+                          if os.path.isdir(os.path.join(HERE, d)) for f in os.listdir(os.path.join(HERE, d))),
                    check=True, stdout=subprocess.DEVNULL)
     manifest = yaml.safe_load(read("tools/codelabs.yml"))
     defaults = manifest.get("defaults", {})

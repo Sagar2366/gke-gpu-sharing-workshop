@@ -182,24 +182,20 @@ You pay per minute while the VM exists. An L4 VM for 2 hours costs a few dollars
 ## 7. Do the workshop steps { data-mins="60" }
 
 !!! step "Follow the workshop codelab"
-    Open **[One GPU, Four Teams (Jarvislabs edition)](gpu-sharing-jarvislabs.md)** and do steps 3 to 10.
-    When a task names a team, switch to that tab.
+    Open **[One GPU, Four Teams](gpu-sharing-jarvislabs.md)**. You've already done step 2 (the build), so start at step 3.
+    When a task names a team, switch to that tab. When a box says **On the big screen**, that's you: run it yourself.
 
-!!! step "Switch strategies yourself"
-    Before **NVIDIA MPS**, delete all pods in every tab, then:
+!!! step "Switch modes yourself"
+    Delete all pods in every tab first, then:
 
-    ```bash
-    ./scripts/jarvislabs/04-switch-strategy.sh mps
-    ```
-
-    Before **Serve Gemma with vLLM**, switch back:
-
-    ```bash
-    ./scripts/jarvislabs/04-switch-strategy.sh ts
-    ```
+    | Before step | Run |
+    |---|---|
+    | 5 · time-slicing | `./scripts/jarvislabs/04-switch-strategy.sh ts` |
+    | 6 · MPS (optional) | `./scripts/jarvislabs/04-switch-strategy.sh mps`, then run step 5's burn task in each tab and compare speeds (`demo.sh` needs a separate stage GPU) |
+    | 7 · HAMi | `./scripts/jarvislabs/04-switch-strategy.sh hami` |
 
     !!! why "Why this matters"
-        That one label change is all it takes: NVIDIA's device plugin restarts with a different config, and the same GPU is now shared a different way.
+        It's only node labels: NVIDIA's device plugin picks a new config, or steps aside for HAMi.
 
 !!! tip "Memory on one VM"
     Everything shares one machine, so in the Gemma step run **two** Gemma servers (Dosa and Vada) rather than four.

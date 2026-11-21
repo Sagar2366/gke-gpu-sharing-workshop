@@ -17,29 +17,23 @@ defaults:
 
 codelabs:
   - id: gpu-sharing-jarvislabs
-    title: "One GPU, Four Teams: hands-on GPU sharing on Kubernetes (Jarvislabs)"
+    title: "One GPU, Four Teams: from bare machines to shared GPUs"
     category: Workshop
     variant: jarvislabs
     lean: true
     duration: 90 min
-    summary: "The workshop on the day: a Kubernetes GPU cluster built live on Jarvislabs. Share one L4 between four teams with time-sharing, NVIDIA MPS and MIG, watch it in Grafana, serve Gemma with vLLM."
+    summary: "Build a Kubernetes GPU cluster live, then hit and fix one real problem after another: invisible GPUs, whole-GPU hogging, noisy neighbours, memory crashes, and a real model on a shared GPU."
     steps:
-      - {title: Introduction, file: tools/src/codelabs/workshop-intro.md, vpath: codelabs/_.md, mins: 3}
-      - title: Before you begin
-        mins: 17
-        parts:
-          - {file: tools/src/codelabs/workshop-live-build.md, vpath: codelabs/_.md}
-          - {file: tools/build/labs/00-setup.md, vpath: labs/00-setup.md}
-      - {title: How Kubernetes gives a pod a GPU, file: tools/build/labs/01-gpu-to-pod.md, vpath: labs/01-gpu-to-pod.md, mins: 8}
-      - {title: GPU time-sharing, file: tools/build/labs/02-time-sharing.md, vpath: labs/02-time-sharing.md, mins: 17}
-      - {title: Watch it in Grafana, file: tools/build/labs/03-monitoring.md, vpath: labs/03-monitoring.md, mins: 5}
-      - {title: NVIDIA MPS, file: tools/build/labs/04-mps.md, vpath: labs/04-mps.md, mins: 12}
-      - {title: Multi-instance GPU, file: tools/build/labs/05-mig.md, vpath: labs/05-mig.md, mins: 6}
-      - {title: Serve Gemma with vLLM, file: tools/build/labs/06-gemma-vllm.md, vpath: labs/06-gemma-vllm.md, mins: 12}
-      - {title: "Finale: the Astronomy Shop", file: tools/build/labs/06b-finale.md, vpath: labs/06b-finale.md, mins: 4}
-      - {title: Choose a strategy, file: tools/build/labs/07-decision-guide.md, vpath: labs/07-decision-guide.md, mins: 3}
-      - {title: Clean up, file: tools/src/codelabs/workshop-cleanup.md, vpath: codelabs/_.md, mins: 1}
-      - {title: Congratulations, file: tools/src/codelabs/workshop-congrats.md, vpath: codelabs/_.md, mins: 0}
+      - {title: Introduction, file: tools/build/labs/s01-intro.md, vpath: codelabs/_.md, mins: 3}
+      - {title: "Build the cluster, step by step", file: tools/build/labs/s02-build.md, vpath: codelabs/_.md, mins: 17}
+      - {title: Your first GPU pod, file: tools/build/labs/s03-first-pod.md, vpath: codelabs/_.md, mins: 8}
+      - {title: "Problem: one pod, one whole GPU", file: tools/build/labs/s04-whole-gpu.md, vpath: codelabs/_.md, mins: 7}
+      - {title: "Fix: time-slicing (and its problems)", file: tools/build/labs/s05-time-slicing.md, vpath: codelabs/_.md, mins: 15}
+      - {title: "NVIDIA's answers: MPS and MIG", file: tools/build/labs/s06-mps-mig.md, vpath: codelabs/_.md, mins: 6}
+      - {title: "Fix: HAMi memory and compute limits", file: tools/build/labs/s07-hami.md, vpath: codelabs/_.md, mins: 15}
+      - {title: A real model on a shared GPU, file: tools/build/labs/s08-vllm.md, vpath: codelabs/_.md, mins: 12}
+      - {title: Choose your fix, file: tools/build/labs/s09-choose.md, vpath: codelabs/_.md, mins: 4}
+      - {title: Clean up, file: tools/build/labs/s10-cleanup.md, vpath: codelabs/_.md, mins: 2}
 
   - id: gpu-sharing-on-gke
     title: "One GPU, Four Teams: hands-on GPU sharing on GKE"

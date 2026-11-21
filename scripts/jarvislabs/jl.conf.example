@@ -41,6 +41,7 @@ export MIG_PROFILE="1g.18gb"
 # Pin these for the event after rehearsal.
 export K3S_VERSION="v1.33.5+k3s1"
 export GPU_OPERATOR_VERSION=""          # empty = latest chart
+export HAMI_VERSION=""                  # empty = latest HAMi chart
 
 # ---- Live-build settings ------------------------------------------------------
 # Fixed secret path for kubeconfig downloads, so you can publish KUBECONFIG_BASE_URL

@@ -34,8 +34,8 @@ share **one real NVIDIA GPU** between your four "teams", and try all three ways 
 
 <a class="catalog-card" href="codelabs/gpu-sharing-jarvislabs.html">
   <span class="cc-cat">Workshop · on the day</span>
-  <span class="cc-title">One GPU, Four Teams: hands-on GPU sharing on Kubernetes (Jarvislabs)</span>
-  <p class="cc-desc">The cluster is built live on Jarvislabs GPU VMs. Time-sharing, NVIDIA MPS and MIG on one L4 per table, Grafana, Gemma with vLLM.</p>
+  <span class="cc-title">One GPU, Four Teams: from bare machines to shared GPUs</span>
+  <p class="cc-desc">Build a Kubernetes GPU cluster live, then hit and fix one real problem after another: time-slicing, MPS, MIG, HAMi, and Gemma on vLLM.</p>
   <span class="cc-foot"><span>90 min · 3:00–4:30 PM</span><span class="cc-start">Start</span></span>
 </a>
 

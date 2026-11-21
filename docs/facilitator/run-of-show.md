@@ -1,40 +1,38 @@
 # Run of show (3:00–4:30 PM, 90 minutes)
 
-This plan assumes the **Jarvislabs** cluster built **live** (likely, since GPU quota is still pending). If GKE quota arrives, use the
-same timings: show `01-create-cluster.sh` output (pre-built) during the live-build slot instead, and skip the strategy switches.
+**The story:** build a GPU cluster live, then hit one real problem after another and fix it. Attendees follow the
+**[workshop codelab](../codelabs/gpu-sharing-jarvislabs.md)**. You type the **On the big screen** commands; they do the tasks.
 
-| Clock | Min | Codelab step | On the projector | Say / do |
-|---|---|---|---|---|
-| 3:00 | 3 | **1 · Introduction** | Catalog → **Workshop (Jarvislabs)** codelab | GPUs are the priciest nodes; Kubernetes hands them out whole. Introduce Dosa / Idli / Vada / Chai. Show of hands: Kubernetes? GPUs? Reassure beginners. |
-| 3:03 | 12 | **2 · Before you begin**: live build | `PAUSE=1 ./scripts/jarvislabs/up.sh` | Narrate each stage ([script](../codelabs/planb-build.md#4)). Attendees open Cloud Shell and clone the repo meanwhile. |
-| 3:15 | 5 | **2 · Before you begin**: connect | Cloud Shell | At **CLUSTER READY**: *"run setup.sh now"*, then the hello pod. Helpers check banners. Keep `WATCH=1 status.sh` on a second screen. |
-| 3:20 | 8 | **3 · How GKE gives a pod a GPU** | `kubectl describe node` | Point at `nvidia.com/gpu: 4` on a one-GPU node: "the scheduler counts chairs, not the table". |
-| 3:28 | 17 | **4 · GPU time-sharing** | Burn logs | Conduct the table: "Dosas, start… Idlis, go!" Then the memory crash: "who crashed, the greedy one or the innocent one?" Skip Extras. |
-| 3:45 | 5 | **5 · Monitoring** | Grafana DCGM dashboard (or Cloud Monitoring on GKE) | Find the hottest table. Punchline: "100% busy, but whose fault?" End with **everyone deletes pods**. |
-| 3:50 | 2 | *switch* | `04-switch-strategy.sh mps` | While it runs (~1–2 min), explain MPS with the "assigned seats" analogy from the top of step 6. |
-| 3:52 | 12 | **6 · NVIDIA MPS** | Probe output vs step 3's | "58 → 14 SMs, 22 → 5.5 GiB, no code changes." Then the env-var override. |
-| 4:04 | 6 | **7 · Multi-instance GPU** | **Demo** on the MIG VM | Show `nvidia-smi -L` with MIG slices, a flat TFLOPS line, the memory wall. Meanwhile run `04-switch-strategy.sh ts`. |
-| 4:10 | 12 | **8 · Serve Gemma with vLLM** | Dosa's `nvidia-smi` ~20 GiB | "A 2 GB model holding 20 GB." Let Vada's crash happen, fix with `GPU_UTIL=0.2`. Benchmark with/without burn. Skip Extras. |
-| 4:22 | 4 | **9 · Finale** | Astronomy Shop → Jaeger → noisy neighbour ON → Grafana | "Same app, same code, same model: only the neighbour changed." |
-| 4:26 | 3 | **10–12 · Choose, clean up, congrats** | Decision flowchart | One pass of the flowchart for Dosa and Idli. Everyone runs the clean-up command. Feedback QR. |
-| 4:29 | 1 | *Close* | Catalog page | Take-home codelab link; the repo stays up for a week. |
+| Clock | Min | Step | You run (big screen) | Attendees | Land this point |
+|---|---|---|---|---|---|
+| 3:00 | 3 | **1 · Introduction** | catalog page | listen | "GPUs are the priciest nodes. Let's build a cluster and break it." |
+| 3:03 | 17 | **2 · Build the cluster** | `01-server.sh` → `02-gpu-nodes.sh` → `kubectl describe node` (no GPU!) → `03-gpu-operator.sh` → `03b-monitoring.sh` → `06-onboard.sh && 07-serve-kubeconfigs.sh` | open Cloud Shell, clone repo | **Problem:** K8s can't see GPUs. **Fix:** the device plugin. "On GKE, Google runs all this." |
+| 3:20 | 8 | **3 · Your first GPU pod** | `WATCH=1 status.sh` on screen 2 | `setup.sh`, probe pod | "You're on your table's L4." |
+| 3:28 | 7 | **4 · Problem: whole GPU** | (end) `04-switch-strategy.sh ts` | Dosa holds the GPU; others Pending | **Problem:** an idle pod holds a whole GPU. |
+| 3:35 | 15 | **5 · Fix: time-slicing** | Grafana DCGM dashboard at the end | burn ×4, then memhog | **New problems:** noisy neighbour (4× slower), memory crash hits the *innocent* pod. |
+| 3:50 | 6 | **6 · MPS and MIG** | `ROLE=stage 04-switch-strategy.sh mps` + `demo.sh mps`; `demo.sh mig`; then `demo.sh clean` + `04-switch-strategy.sh hami` | watch, table talk | MPS: steady but soft caps. MIG: hard walls, big GPUs only. "Neither fits our L4s → HAMi." |
+| 3:56 | 15 | **7 · Fix: HAMi** | | probe sees a 4 GB GPU, memhog hits own wall, burn capped | **Fixed:** enforced memory and compute per pod. |
+| 4:11 | 12 | **8 · A real model** | | 4 × Gemma/vLLM on one L4, chat, bench | **Fixed:** vLLM's 90% grab becomes 90% of *its* 5 GB. No crashes. |
+| 4:23 | 4 | **9 · Choose your fix** | the table | quiz | One line each; gang scheduling in one sentence. |
+| 4:27 | 2 | **10 · Clean up** | | delete everything, feedback QR | |
+| 4:29 | 1 | *Close* | delete the VMs after | | Take-home codelab link. |
+
+!!! tip "Keep these open"
+    Terminal 1: the build/switch commands (big font). Terminal 2: `WATCH=1 ./scripts/jarvislabs/status.sh`. A browser tab with Grafana (`$GRAFANA_URL`).
 
 ## If you're running late
 
-- **Cut first:** the Extras in every step, and the MPS "two shares" task.
-- **Cut second:** step 5 (show the dashboard for 1 minute yourself), and the finale (show one Jaeger trace only).
-- **Never cut:** the noisy neighbour (step 4), MPS vs time-sharing (step 6), and the vLLM crash (step 8).
+- **Cut first:** step 6's MIG demo (say one sentence), every **Extra** task, the bench in step 8.
+- **Cut second:** step 5's memory crash (describe it), step 9's quiz.
+- **Never cut:** the invisible GPU (2), the Pending pods (4), the noisy neighbour (5), HAMi's memory wall (7).
 
 ## If something breaks
 
 | Symptom | Fallback |
 |---|---|
-| A live-build stage fails | Fix and `FROM=<stage> ./scripts/jarvislabs/up.sh`. Worst case `YES=1 reset.sh && up.sh` (~15 min) while you teach step 3 from slides. |
-| One table's GPU VM is broken | Move that table to the stage GPU: `kubectl label node <stage-node> workshop.devfest/table=tNN --overwrite`. Skip the finale. |
-| Kubeconfig download fails | Check `status.sh` for port 8088; re-run `./scripts/jarvislabs/07-serve-kubeconfigs.sh`. |
-| MIG can't be enabled | Show the MIG step as slides plus the flip cards. |
-| Monitoring lags | Use `watch-gpu.sh` or screenshots from rehearsal. |
-
-!!! tip "Open with a 30-second teaser"
-    At 3:00, show the Astronomy Shop's AI assistant answering a question. Say: *"By 4:30 you'll know how to make this slow, and how to
-    stop it happening."* Pay it off in the finale.
+| A build stage fails | Fix and re-run that script (each is safe to re-run). Worst case: `YES=1 reset.sh && up.sh` (~15 min) while you explain step 4 on slides. |
+| A table's GPU VM is broken | Give that table the stage GPU: `kubectl label node <stage-node> workshop.devfest/table=tNN --overwrite`. Skip the MPS demo. |
+| HAMi switch is slow (image pulls) | Talk through step 7's YAML while it finishes; check `kubectl -n kube-system get pods`. |
+| HAMi misbehaves | Switch back with `04-switch-strategy.sh ts` and run step 8 with `--gpu-memory-utilization=0.2` (the old way, which also teaches the problem). |
+| MIG can't be enabled | Show step 6's MIG tab as a slide. |
+| Kubeconfig download fails | `status.sh` → port 8088; re-run `07-serve-kubeconfigs.sh`. |

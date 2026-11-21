@@ -297,3 +297,23 @@ body.codelab-mode .course-progress { position: static; }
 .md-typeset .mermaid-src.mermaid-offline::before { content: "Diagram needs the Mermaid library (run ./serve.sh once while online). Source:"; display: block; color: #e8710a; font-family: var(--md-text-font-family, sans-serif); margin-bottom: .3rem; }
 .md-typeset .mermaid-out { margin: 1.2em 0; text-align: center; overflow-x: auto; }
 .md-typeset .mermaid-out svg { max-width: 100%; height: auto; }
+
+/* Problem → solution storytelling */
+:root {
+  --md-admonition-icon--problem: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>');
+  --md-admonition-icon--solution: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 15-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg>');
+  --md-admonition-icon--screen: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 3H3v13h7v2H8v2h8v-2h-2v-2h7V3zm-2 11H5V5h14v9z"/></svg>');
+}
+.md-typeset .admonition.problem, .md-typeset details.problem { border-color: #d93025; border-width: 1px 1px 1px 5px; }
+.md-typeset .problem > .admonition-title, .md-typeset .problem > summary { background: rgba(217,48,37,.10); font-size: .85rem; }
+.md-typeset .problem > .admonition-title::before, .md-typeset .problem > summary::before { background-color: #d93025; -webkit-mask-image: var(--md-admonition-icon--problem); mask-image: var(--md-admonition-icon--problem); }
+.md-typeset .admonition.solution, .md-typeset details.solution { border-color: #188038; border-width: 1px 1px 1px 5px; }
+.md-typeset .solution > .admonition-title, .md-typeset .solution > summary { background: rgba(24,128,56,.10); font-size: .85rem; }
+.md-typeset .solution > .admonition-title::before, .md-typeset .solution > summary::before { background-color: #188038; -webkit-mask-image: var(--md-admonition-icon--solution); mask-image: var(--md-admonition-icon--solution); }
+.md-typeset .admonition.screen, .md-typeset details.screen { border-color: #5f6368; background: rgba(32,33,36,.03); }
+.md-typeset .screen > .admonition-title, .md-typeset .screen > summary { background: rgba(95,99,104,.12); }
+.md-typeset .screen > .admonition-title::before, .md-typeset .screen > summary::before { background-color: #5f6368; -webkit-mask-image: var(--md-admonition-icon--screen); mask-image: var(--md-admonition-icon--screen); }
+.md-typeset .journey { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; font-size: .72rem; margin: .8rem 0 1.2rem; }
+.md-typeset .journey span { padding: .2rem .6rem; border-radius: 999px; background: var(--md-code-bg-color); }
+.md-typeset .journey span.p { background: rgba(217,48,37,.12); color: #a50e0e; }
+.md-typeset .journey span.s { background: rgba(24,128,56,.12); color: #0d652d; }
