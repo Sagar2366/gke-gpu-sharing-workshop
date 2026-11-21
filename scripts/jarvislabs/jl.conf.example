@@ -1,0 +1,51 @@
+# jl.conf: Plan B (Jarvislabs) cluster inventory. Copy to jl.conf and fill in.
+#
+# One small CPU VM runs the k3s server (and the monitoring stack).
+# One single-GPU VM per TABLE (L4 recommended, so numbers match the GKE labs).
+# Optional: one MIG-capable VM (H100/H200/A100) for Lab 5, and one GPU VM as the
+# finale "stage" (t00).
+#
+# All VMs: Ubuntu 22.04/24.04 Jarvislabs VMs with root SSH access.
+
+# SSH user and key used to reach every VM
+export SSH_USER="root"
+export SSH_KEY="$HOME/.ssh/id_ed25519"
+
+# k3s server (CPU VM). PUBLIC_IP is what attendees' kubectl connects to (port 6443).
+# PRIVATE_IP is used by nodes to join, if Jarvislabs private networking is set up;
+# otherwise set it to the public IP too.
+export SERVER_PUBLIC_IP="203.0.113.10"
+export SERVER_PRIVATE_IP="10.0.0.10"
+
+# GPU nodes: "<ssh-ip> <table-id> <role>", one per line.
+#   role: table  = attendee table GPU (time-sharing, later MPS, via 04-switch-strategy.sh)
+#         stage  = finale GPU (always time-sharing), give it table id t00
+#         mig    = MIG node for Lab 5 (table id ignored, use "-")
+export GPU_NODES="
+203.0.113.21 t01 table
+203.0.113.22 t02 table
+203.0.113.23 t03 table
+203.0.113.30 t00 stage
+203.0.113.40 -   mig
+"
+
+# GKE accelerator name to label nodes with (keeps the lab manifests identical).
+# L4 -> nvidia-l4 · H100 -> nvidia-h100-80gb · H200 -> nvidia-h200-141gb · A100 40GB -> nvidia-tesla-a100
+export TABLE_GPU_LABEL="nvidia-l4"
+export MIG_GPU_LABEL="nvidia-h200-141gb"
+# MIG profile for the mig node (GPU Operator mig-manager name) and its slice name
+#   H200: all-1g.18gb / 1g.18gb   H100: all-1g.10gb / 1g.10gb   A100 40GB: all-1g.5gb / 1g.5gb
+export MIG_CONFIG="all-1g.18gb"
+export MIG_PROFILE="1g.18gb"
+
+# Pin these for the event after rehearsal.
+export K3S_VERSION="v1.33.5+k3s1"
+export GPU_OPERATOR_VERSION=""          # empty = latest chart
+
+# ---- Live-build settings ------------------------------------------------------
+# Fixed secret path for kubeconfig downloads, so you can publish KUBECONFIG_BASE_URL
+# in workshop.conf BEFORE the session (generate once: openssl rand -hex 8).
+export KC_SECRET="change-me-16chars"
+# Attendee list (same CSV as Plan A: email,table,team). Email is ignored on Plan B.
+export ATTENDEES_CSV="../facilitator/attendees.csv"
+# HF_TOKEN is read from your environment (never commit it): export HF_TOKEN=hf_...

@@ -1,0 +1,45 @@
+# monitoring-values.yaml: kube-prometheus-stack for Plan B (stands in for Cloud Monitoring).
+# Grafana and Prometheus are exposed as NodePorts on the server VM. Grafana is read-only
+# for attendees (anonymous Viewer).
+grafana:
+  service:
+    type: NodePort
+    nodePort: 30300
+  grafana.ini:
+    auth.anonymous:
+      enabled: true
+      org_role: Viewer
+  adminPassword: change-me-before-the-event
+  nodeSelector:
+    workshop.devfest/pool: system
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: default
+        orgId: 1
+        folder: Workshop
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards/default
+  dashboards:
+    default:
+      nvidia-dcgm:
+        gnetId: 12239          # NVIDIA DCGM Exporter dashboard
+        revision: 2
+        datasource: Prometheus
+
+prometheus:
+  service:
+    type: NodePort
+    nodePort: 30090
+  prometheusSpec:
+    # Pick up the dcgm-exporter ServiceMonitor that the GPU Operator creates.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    scrapeInterval: 15s
+    nodeSelector:
+      workshop.devfest/pool: system
+
+alertmanager:
+  enabled: false

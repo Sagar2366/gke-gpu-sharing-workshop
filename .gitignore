@@ -1,0 +1,7 @@
+.venv/
+site/
+__pycache__/
+attendees.csv
+me.csv
+scripts/jarvislabs/jl.conf
+scripts/jarvislabs/out/

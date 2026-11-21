@@ -1,0 +1,36 @@
+# device-plugin-config.yaml: NVIDIA device plugin configs, selected per node with the
+# label nvidia.com/device-plugin.config=<key>. 04-switch-strategy.sh flips table nodes
+# between ts4 and mps4, which mirrors the two GKE node pools.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: device-plugin-config
+  namespace: gpu-operator
+data:
+  # Whole GPU, no sharing (default)
+  none: |-
+    version: v1
+  # Like GKE gpu-sharing-strategy=time-sharing, max-shared-clients-per-gpu=4
+  ts4: |-
+    version: v1
+    sharing:
+      timeSlicing:
+        renameByDefault: false
+        failRequestsGreaterThanOne: true
+        resources:
+        - name: nvidia.com/gpu
+          replicas: 4
+  # Like GKE gpu-sharing-strategy=mps, max-shared-clients-per-gpu=4
+  mps4: |-
+    version: v1
+    sharing:
+      mps:
+        renameByDefault: false
+        resources:
+        - name: nvidia.com/gpu
+          replicas: 4
+  # MIG node: advertise each MIG slice as nvidia.com/gpu (like GKE)
+  mig: |-
+    version: v1
+    flags:
+      migStrategy: single

@@ -1,0 +1,90 @@
+site_name: "One GPU, Four Teams"
+site_description: "Hands-on GPU sharing on GKE: time-sharing, NVIDIA MPS and multi-instance GPU. DevFest Bengaluru workshop."
+site_author: "DevFest Bengaluru"
+copyright: "DevFest Bengaluru · One GPU, Four Teams workshop · CC BY 4.0"
+# repo_url: https://github.com/YOUR-ORG/gke-gpu-sharing-workshop
+
+use_directory_urls: false   # lets the built site/ folder open straight from disk
+
+theme:
+  name: material
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle: {icon: material/weather-night, name: Dark mode}
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle: {icon: material/weather-sunny, name: Light mode}
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.instant
+    - navigation.tracking
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - search.highlight
+    - toc.follow
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/course.js
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc: {permalink: true}
+  - pymdownx.details
+  - pymdownx.keys
+  - pymdownx.highlight: {anchor_linenums: true}
+  - pymdownx.inlinehilite
+  - pymdownx.tasklist: {custom_checkbox: true}
+  - pymdownx.tabbed: {alternate_style: true}
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.superfences:
+      custom_fences:
+        # Rendered by docs/javascripts/course.js (only when visible, so hidden codelab
+        # steps and tabs render correctly). Not by Material's built-in integration.
+        - name: mermaid
+          class: mermaid-src
+          format: !!python/name:pymdownx.superfences.fence_div_format
+
+nav:
+  - Home: index.md
+  - Codelabs:
+      - "Foundations (start here)": codelabs/foundations.md
+      - "Workshop (Jarvislabs, on the day)": codelabs/gpu-sharing-jarvislabs.md
+      - "Workshop (GKE edition)": codelabs/gpu-sharing-on-gke.md
+      - "Take home: one Jarvislabs GPU VM": codelabs/jarvislabs-solo.md
+      - "Take home: your own Google Cloud project": codelabs/own-project.md
+      - "Facilitator: build the cluster live": codelabs/planb-build.md
+  - Reference:
+      - Cheat sheet: reference/cheatsheet.md
+      - Troubleshooting: reference/troubleshooting.md
+      - Glossary: reference/glossary.md
+      - Beyond GKE: reference/beyond-gke.md
+      - "HAMi: enforced GPU memory limits": reference/hami.md
+      - "What's next: AICR & Agent Substrate": reference/whats-next.md
+  - Organisers:
+      - Facilitator guide: facilitator/index.md
+      - Run of show: facilitator/run-of-show.md
+      - Rehearsal checklist: facilitator/rehearsal.md
+      - Table card: facilitator/table-card.md
+      - "Plan B: overview & go/no-go": planb/index.md
+      - "Plan B: what changes for attendees": planb/differences.md

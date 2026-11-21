@@ -1,0 +1,38 @@
+{
+  "displayName": "DevFest: One GPU, Four Teams",
+  "mosaicLayout": {
+    "columns": 48,
+    "tiles": [
+      {
+        "width": 24, "height": 16, "xPos": 0, "yPos": 0,
+        "widget": {
+          "title": "GPU duty cycle per node (time-sharing + MPS nodes)",
+          "xyChart": {
+            "dataSets": [{
+              "plotType": "LINE",
+              "timeSeriesQuery": {
+                "prometheusQuery": "max by (node_name) (kubernetes_io:node_accelerator_duty_cycle{monitored_resource=\"k8s_node\", cluster_name=\"gpu-share\"})"
+              }
+            }],
+            "yAxis": {"label": "%", "scale": "LINEAR"}
+          }
+        }
+      },
+      {
+        "width": 24, "height": 16, "xPos": 24, "yPos": 0,
+        "widget": {
+          "title": "GPU memory used per node (GiB)",
+          "xyChart": {
+            "dataSets": [{
+              "plotType": "LINE",
+              "timeSeriesQuery": {
+                "prometheusQuery": "max by (node_name) (kubernetes_io:node_accelerator_memory_used{monitored_resource=\"k8s_node\", cluster_name=\"gpu-share\"}) / 1024^3"
+              }
+            }],
+            "yAxis": {"label": "GiB", "scale": "LINEAR"}
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+# otel-demo-values.yaml: OpenTelemetry Astronomy Shop for the workshop finale.
+#
+# The shop's AI assistant ("agent" + "chatbot" components) is pointed at a LIVE
+# Gemma model served by vLLM on a time-shared L4 (see otel-demo-gemma.yaml),
+# instead of the chart's default recorded responses (USE_VCR=True).
+# Then we put a noisy neighbour on that same GPU and watch the traces.
+#
+# Where the pods run: GPU nodes are tainted, so the ~25 demo pods can only land on
+# CPU nodes. 01-create-cluster.sh POOLS="demo" adds a CPU pool sized for them.
+#
+# Component names and env keys can change between chart versions. At rehearsal,
+# check them against: helm show values open-telemetry/opentelemetry-demo
+
+components:
+  agent:
+    envOverrides:
+      - name: LLM_BASE_URL
+        value: http://gemma4.otel-demo.svc.cluster.local:8000/v1
+      - name: LLM_MODEL
+        value: google/gemma-4-E2B-it
+      - name: API_KEY
+        value: not-needed          # vLLM doesn't check it, but the client wants one
+      - name: USE_VCR
+        value: "False"             # call the live model instead of replaying recordings
+      - name: LLM_TLS_VERIFY
+        value: "False"             # plain http inside the cluster
+
+  # The load generator also exercises the assistant. Keep it gentle, so the GPU
+  # contention you show on stage comes from the noisy neighbour, not from Locust.
+  load-generator:
+    envOverrides:
+      - name: LOCUST_USERS
+        value: "3"

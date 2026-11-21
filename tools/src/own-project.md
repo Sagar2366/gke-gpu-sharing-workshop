@@ -1,0 +1,187 @@
+# Run it in your own project
+
+Everything you did today works in your own Google Cloud project, at small scale: one GPU, with you playing all
+four teams in four terminal tabs. This page assumes you've **never** set up Google Cloud before.
+
+!!! abstract "The whole journey"
+    ```mermaid
+    flowchart LR
+      A[Redeem credits] --> B[Create a project] --> C[Turn on APIs] --> D[Ask for GPU quota]
+      D --> E[Create a cluster] --> F[Do the labs] --> G[Delete everything]
+    ```
+    Budget about **30 minutes** for steps 1–4 (plus waiting for quota approval), then about 15 minutes for the cluster.
+
+## Step 1 · Redeem your credits
+
+1. Open the **credit coupon link** you received from DevFest or Google in a browser signed in to your Google account.
+2. Follow the prompts. The credits are added to a **billing account**. If you don't have one yet, you'll be asked to create one.
+3. Check: go to **[console.cloud.google.com/billing](https://console.cloud.google.com/billing)**. You should see a billing account, and under **Credits** your coupon amount.
+
+!!! warning "Free trial vs. paid account"
+    If you signed up for the Google Cloud **free trial**, you **can't use GPUs** until you upgrade.
+    In the console, go to **Billing → Overview** and click **Upgrade** (or **Activate full account**).
+    Your credits still apply first. You're only charged after they run out, and step 6 makes sure nothing keeps running.
+
+!!! tip "Set a budget alert (2 minutes, highly recommended)"
+    **Billing → Budgets & alerts → Create budget**. Set the amount to $5, keep the default alerts at 50%, 90% and 100%, and save.
+    You'll get an email before your credits run out.
+
+## Step 2 · Create a project
+
+1. Go to **[console.cloud.google.com/projectcreate](https://console.cloud.google.com/projectcreate)**.
+2. **Project name:** `gpu-sharing-lab` (anything is fine). Note the **Project ID** shown under it, e.g. `gpu-sharing-lab-123456`.
+3. **Billing account:** choose the one with your credits. Click **Create**.
+4. At the top of the console, use the project picker to make sure your new project is selected.
+
+## Step 3 · Open Cloud Shell and turn on the APIs
+
+1. Click the **Activate Cloud Shell** icon (:material-console:) at the top right of the console, or go to [shell.cloud.google.com](https://shell.cloud.google.com).
+2. Point Cloud Shell at your project (use **your** project ID):
+
+    ```bash
+    gcloud config set project gpu-sharing-lab-123456
+    ```
+
+3. Turn on the services the labs use. This takes a minute or two:
+
+    ```bash
+    gcloud services enable container.googleapis.com compute.googleapis.com monitoring.googleapis.com
+    ```
+
+## Step 4 · Ask for GPU quota
+
+New projects are usually allowed **0 GPUs**. You need to ask for 1.
+
+1. Check what you have now:
+
+    ```bash
+    gcloud compute regions describe us-central1 --format="table(quotas.metric,quotas.limit)" --flatten=quotas | grep -i -E "L4|A100"
+    gcloud compute project-info describe --format="table(quotas.metric,quotas.limit)" --flatten=quotas | grep GPUS_ALL_REGIONS
+    ```
+
+2. If `NVIDIA_L4_GPUS` or `GPUS_ALL_REGIONS` shows `0`, open **[IAM & Admin → Quotas & System Limits](https://console.cloud.google.com/iam-admin/quotas)**.
+3. In the filter box, search for **`GPUs (all regions)`**. Tick it, click **Edit quotas**, enter **1**, give a short reason
+   ("Learning GPU sharing on GKE after DevFest workshop") and submit.
+4. Do the same for **`NVIDIA L4 GPUs`** with region **us-central1**. Optional: **`NVIDIA A100 GPUs`** = 1 for the MIG lab.
+5. You'll get an email when it's approved. That can be minutes or a couple of days.
+
+!!! note "Why us-central1?"
+    It has both L4 and A100 GPUs. Closer regions like `asia-south1` (Mumbai) may not have every GPU type. To check a region:
+    `gcloud compute accelerator-types list --filter="zone~asia-south1"`.
+
+## Step 5 · Create the cluster and do the labs
+
+### What it costs
+
+| What | Approx. price* | $5 buys about |
+|---|---|---|
+| GKE cluster management | covered by the GKE free tier (one zonal cluster per billing account) | n/a |
+| 1 × L4 node (`g2-standard-8`), **Spot** | a fraction of on-demand | several hours, but Google can reclaim it at any time |
+| 1 × L4 node, on-demand | under $1/hour | 5+ hours |
+| 1 × A100 40GB node (`a2-highgpu-1g`), on-demand | several $/hour | about 1 hour of the MIG lab |
+
+\* Prices vary by region and change, so check the [GPU pricing page](https://cloud.google.com/compute/gpus-pricing).
+**GPU nodes cost money every second they exist, even when idle.** Delete them when you take a break (step 6).
+
+### 5.1 Get the files and point them at your project
+
+```bash
+git clone https://github.com/YOUR-ORG/gke-gpu-sharing-workshop.git
+cd gke-gpu-sharing-workshop
+sed -i "s/^export WORKSHOP_PROJECT=.*/export WORKSHOP_PROJECT=\"$(gcloud config get project)\"/" workshop.conf
+grep WORKSHOP_PROJECT workshop.conf      # should show your project ID
+```
+
+### 5.2 Create a cluster with one time-sharing L4 (~10–15 min)
+
+```bash
+TABLES=1 POOLS="ts" SPOT=1 ./scripts/facilitator/01-create-cluster.sh
+```
+
+The GPU node pool is created in the background. Check until the list is empty:
+
+```bash
+source workshop.conf
+gcloud container operations list --location="$ZONE" --filter='status!=DONE'
+```
+
+Then connect and label your GPU node as "table t01":
+
+```bash
+gcloud container clusters get-credentials "$CLUSTER" --location="$ZONE"
+./scripts/facilitator/02-label-tables.sh
+```
+
+??? failure "`ZONE_RESOURCE_POOL_EXHAUSTED` or `Quota exceeded`"
+    *Exhausted* means Google has no spare L4s in that zone right now. Edit `ZONE` in `workshop.conf` to another zone with L4s
+    (e.g. `us-central1-b` or `us-east4-a`), then re-run. *Quota exceeded* means step 4 isn't approved yet.
+
+### 5.3 Create your four "teams"
+
+```bash
+ME=$(gcloud config get account)
+printf "email,table,team\n$ME,t01,dosa\n$ME,t01,idli\n$ME,t01,vada\n$ME,t01,chai\n" > me.csv
+./scripts/facilitator/03-onboard-attendees.sh me.csv
+```
+
+Open **four Cloud Shell tabs** (the **+** button). In each one become a different team:
+
+```bash
+cd ~/gke-gpu-sharing-workshop
+source scripts/attendee/setup.sh t01 dosa     # tab 1 (then idli, vada, chai in tabs 2-4)
+```
+
+Now follow **Steps 2 to 5** exactly as written, switching tabs when a step names a team.
+
+### 5.4 Gemma (Step 8)
+
+Gemma needs a free Hugging Face account:
+
+1. Sign up at [huggingface.co](https://huggingface.co), open [google/gemma-3-1b-it](https://huggingface.co/google/gemma-3-1b-it), and accept the licence.
+2. **Settings → Access Tokens → Create new token**, type **Read**. Copy it.
+3. Pre-download the model onto your node:
+
+```bash
+export HF_TOKEN=hf_xxxxxxxx
+./scripts/facilitator/04-prepull-and-cache.sh
+```
+
+### 5.5 MPS and MIG (Steps 6 and 7)
+
+Your quota is probably one GPU, so **swap** pools instead of adding them:
+
+```bash
+gcloud container node-pools delete ts-l4 --cluster="$CLUSTER" --location="$ZONE" --quiet
+TABLES=1 POOLS="mps" SPOT=1 ./scripts/facilitator/01-create-cluster.sh
+# wait for it, then:
+./scripts/facilitator/02-label-tables.sh && ./scripts/facilitator/04-prepull-and-cache.sh
+```
+
+For MIG (needs A100 quota):
+
+```bash
+gcloud container node-pools delete mps-l4 --cluster="$CLUSTER" --location="$ZONE" --quiet
+POOLS="mig" MIG_NODES=1 SPOT=1 ./scripts/facilitator/01-create-cluster.sh
+```
+
+!!! note
+    When a MIG pool is created, GKE partitions the GPU and **reboots** the node. Give it a few minutes
+    before `nvidia.com/gpu: 7` shows up.
+
+## Step 6 · Delete everything
+
+**Taking a break?** Delete just the GPU pool. This stops almost all the cost:
+
+```bash
+gcloud container node-pools list --cluster="$CLUSTER" --location="$ZONE"
+gcloud container node-pools delete <pool-name> --cluster="$CLUSTER" --location="$ZONE" --quiet
+```
+
+**Finished?** Delete the whole cluster:
+
+```bash
+./scripts/facilitator/99-teardown.sh
+```
+
+Then check **[Compute Engine → VM instances](https://console.cloud.google.com/compute/instances)**: the list should be empty.
+To be completely sure, you can also shut down the project: **IAM & Admin → Settings → Shut down**.

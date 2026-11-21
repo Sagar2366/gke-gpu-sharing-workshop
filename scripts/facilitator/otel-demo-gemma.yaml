@@ -1,0 +1,98 @@
+# otel-demo-gemma.yaml: the live LLM behind the Astronomy Shop's AI assistant.
+#
+# Gemma 4 E2B with tool calling (the shop's assistant is a LangGraph ReAct agent
+# that calls shop tools), served by vLLM on the STAGE table's time-shared L4.
+# Applied by 07-otel-demo.sh, which substitutes ${STAGE_TABLE} and ${GEMMA4_IMAGE}.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gemma4
+  namespace: otel-demo
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: gemma4}}
+  template:
+    metadata:
+      labels: {app: gemma4}
+      annotations:
+        # Lets the demo's collector discover and scrape vLLM's Prometheus metrics
+        # (time-to-first-token, request latency, KV-cache use), so they show up
+        # in the demo's Grafana next to the shop's traces.
+        io.opentelemetry.discovery.metrics/enabled: "true"
+        io.opentelemetry.discovery.metrics/port: "8000"
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-gpu-sharing-strategy: time-sharing
+        workshop.devfest/table: ${STAGE_TABLE}
+      containers:
+      - name: vllm
+        image: ${GEMMA4_IMAGE}
+        command: ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+        args:
+        - --model=google/gemma-4-E2B-it
+        - --host=0.0.0.0
+        - --port=8000
+        - --dtype=bfloat16
+        - --max-model-len=8192
+        - --max-num-seqs=8
+        - --gpu-memory-utilization=0.80     # leave room for the on-stage noisy neighbour
+        - --enable-auto-tool-choice
+        - --tool-call-parser=gemma4
+        env:
+        - {name: LD_LIBRARY_PATH, value: /usr/local/nvidia/lib64}
+        - name: HF_TOKEN
+          valueFrom: {secretKeyRef: {name: hf-token, key: token}}
+        ports: [{containerPort: 8000, name: http}]
+        readinessProbe:
+          httpGet: {path: /health, port: 8000}
+          periodSeconds: 10
+          failureThreshold: 90
+        resources:
+          requests: {cpu: "2", memory: 10Gi}
+          limits: {memory: 16Gi, nvidia.com/gpu: 1}
+        volumeMounts:
+        - {name: dshm, mountPath: /dev/shm}
+      volumes:
+      - name: dshm
+        emptyDir: {medium: Memory, sizeLimit: 2Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gemma4
+  namespace: otel-demo
+spec:
+  selector: {app: gemma4}
+  ports: [{port: 8000, targetPort: 8000, name: http}]
+---
+# The on-stage noisy neighbour. Starts at 0 replicas; the finale scales it to 1.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noisy-neighbour
+  namespace: otel-demo
+spec:
+  replicas: 0
+  selector: {matchLabels: {app: noisy-neighbour}}
+  template:
+    metadata:
+      labels: {app: noisy-neighbour}
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-gpu-sharing-strategy: time-sharing
+        workshop.devfest/table: ${STAGE_TABLE}
+      containers:
+      - name: burn
+        image: ${IMAGE}
+        command: ["python3", "/scripts/burn.py"]
+        env:
+        - {name: LD_LIBRARY_PATH, value: /usr/local/nvidia/lib64}
+        - {name: MATRIX, value: "8192"}
+        resources:
+          requests: {cpu: 500m, memory: 2Gi}
+          limits: {nvidia.com/gpu: 1}
+        volumeMounts: [{name: scripts, mountPath: /scripts}]
+      volumes:
+      - name: scripts
+        configMap: {name: gpu-scripts}
