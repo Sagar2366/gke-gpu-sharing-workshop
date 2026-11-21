@@ -8,6 +8,7 @@ Env vars:
   REPORT_EVERY  seconds between reports (default 5)
   DUTY          fraction of time to stay busy, 0.1-1.0 (default 1.0)
                 1.0 = greedy batch job, 0.2 = polite, bursty workload
+  DEVICE        cuda (default) or cpu, to compare the same work on the CPU
 """
 import os
 import socket
@@ -15,17 +16,20 @@ import time
 
 import torch
 
-n = int(os.environ.get("MATRIX", "8192"))
+device = os.environ.get("DEVICE", "cuda")
+n = int(os.environ.get("MATRIX", "8192" if device == "cuda" else "2048"))
 every = float(os.environ.get("REPORT_EVERY", "5"))
 duty = min(max(float(os.environ.get("DUTY", "1.0")), 0.05), 1.0)
 pod = os.environ.get("HOSTNAME", socket.gethostname())
 
-a = torch.randn(n, n, device="cuda", dtype=torch.float16)
+dtype = torch.float16 if device == "cuda" else torch.float32
+a = torch.randn(n, n, device=device, dtype=dtype)
 b = torch.randn_like(a)
 c = torch.empty_like(a)
 flop_per_mm = 2 * n**3
 
-print(f"[{pod}] burning {n}x{n} fp16 matmuls on {torch.cuda.get_device_name(0)}, duty={duty}", flush=True)
+where = torch.cuda.get_device_name(0) if device == "cuda" else f"CPU ({os.cpu_count()} cores)"
+print(f"[{pod}] burning {n}x{n} {str(dtype).split('.')[-1]} matmuls on {where}, duty={duty}", flush=True)
 
 while True:
     start = time.time()
@@ -34,7 +38,8 @@ while True:
         t0 = time.time()
         for _ in range(5):
             torch.matmul(a, b, out=c)
-        torch.cuda.synchronize()
+        if device == "cuda":
+            torch.cuda.synchronize()
         mms += 5
         busy = time.time() - t0
         if duty < 1.0:

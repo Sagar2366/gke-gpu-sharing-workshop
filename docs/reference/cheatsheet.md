@@ -1,5 +1,28 @@
 # Cheat sheet
 
+## This workshop's cluster
+
+```bash
+source scripts/demo/env.sh                        # in every terminal
+kubectl get nodes -L workshop.devfest/gpu-mode \
+  -o custom-columns='NODE:.metadata.name,MODE:.metadata.labels.workshop\.devfest/gpu-mode,GPU:.status.allocatable.nvidia\.com/gpu'
+NODE=h200-1 ./scripts/k8s/mode.sh ts              # exclusive | ts | mps | mig | hami
+export TABLE=h200-1                               # where pod.sh puts pods
+./scripts/k8s/pod.sh burn dosa idli               # burn-cpu | burn-gpu | hold | burn | memhog <team> <GiB> | probe | greedy
+./scripts/k8s/pod.sh burn dosa --show             # print the YAML instead
+TEAM=dosa GPU_UTIL=0.2 ./scripts/k8s/gemma.sh     # Gemma on vLLM, 20% of the GPU
+```
+
+| Mode | Device plugin config | `nvidia.com/gpu` per H200 | Pod needs |
+|---|---|---|---|
+| exclusive | `none` | 1 | |
+| ts (time-slicing) | `ts4` | 4 | |
+| mps | `mps4` | 4 | `hostIPC: true` |
+| mig | `mig` + `nvidia.com/mig.config=all-1g.18gb` | 7 | |
+| hami | NVIDIA plugin off, `gpu=on` | 10 | `nvidia.com/gpumem`, `nvidia.com/gpucores` |
+
+## On GKE (for reference)
+
 ## Node pool flags (GKE Standard)
 
 ```bash

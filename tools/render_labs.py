@@ -9,6 +9,8 @@ SEL = {
  'ex':   ['workshop.devfest/gpu-mode: exclusive','workshop.devfest/table: ${TABLE}'],
  'tsj':  ['workshop.devfest/gpu-mode: time-sharing','workshop.devfest/table: ${TABLE}'],
  'hami': ['workshop.devfest/gpu-mode: hami','workshop.devfest/table: ${TABLE}'],
+ 'mpsj': ['workshop.devfest/gpu-mode: mps','workshop.devfest/table: ${TABLE}'],
+ 'tbl':  ['workshop.devfest/table: ${TABLE}'],
 }
 def pod(name, strat, command, env=(), gpus=1, restart=None, deadline=None, hostipc=None, requests=False, labels=None, hami=None):
     if hostipc is None: hostipc = (strat=='mps')
@@ -23,8 +25,12 @@ def pod(name, strat, command, env=(), gpus=1, restart=None, deadline=None, hosti
     L += ['    - {name: %s, value: "%s"}'%(k,v) for k,v in env]
     L.append('    resources:')
     if requests: L.append('      requests: {cpu: 500m, memory: 2Gi}')
-    lim = f'nvidia.com/gpu: {gpus}' + (f', nvidia.com/gpumem: {hami[0]}, nvidia.com/gpucores: {hami[1]}' if hami else '')
-    L.append(f'      limits: {{{lim}}}')
+    if gpus == 0:
+        L.append('      limits: {memory: 8Gi}')
+        lim = None
+    else:
+        lim = f'nvidia.com/gpu: {gpus}' + (f', nvidia.com/gpumem: {hami[0]}, nvidia.com/gpucores: {hami[1]}' if hami else '')
+    if lim: L.append(f'      limits: {{{lim}}}')
     L += ['    volumeMounts: [{name: scripts, mountPath: /scripts}]','  volumes:','  - name: scripts','    configMap: {name: gpu-scripts}','EOF']
     return L
 SNIPS = {
@@ -38,6 +44,17 @@ SNIPS = {
  'PROBE_MPS_NOIPC': lambda: pod('probe-noipc','mps','["python3", "/scripts/probe.py"]',restart='Never',deadline=90,hostipc=False),
  'PROBE_MPS': lambda: pod('probe','mps','["python3", "/scripts/probe.py"]',restart='Never'),
  'PROBE_MPS2': lambda: pod('probe2','mps','["python3", "/scripts/probe.py"]',restart='Never',gpus=2),
+ 'BURN_CPU':  lambda: pod('burn-cpu','tbl','["python3", "/scripts/burn.py"]',[('DEVICE','cpu')],gpus=0,restart='Never'),
+ 'GPU_APP':   lambda: pod('burn-gpu','tbl','["python3", "/scripts/burn.py"]',restart='Never'),
+ 'HOLD_T':    lambda: pod('hold-${TEAM}','tbl','["sleep", "infinity"]',labels='{app: hold}'),
+ 'BURN_TS_T': lambda: pod('burn-${TEAM}','tsj','["python3", "/scripts/burn.py"]',labels='{app: burn}',requests=True),
+ 'MEM_TS_T':  lambda gib: pod('memhog-${TEAM}','tsj','["python3", "/scripts/memhog.py"]',[('GIB',gib)]),
+ 'BURN_MPS_T': lambda: pod('burn-${TEAM}','mpsj','["python3", "/scripts/burn.py"]',labels='{app: burn}',requests=True,hostipc=True),
+ 'PROBE_MPS_T': lambda: pod('probe','mpsj','["python3", "/scripts/probe.py"]',restart='Never',hostipc=True),
+ 'PROBE_HAMI_T': lambda: pod('probe','hami','["python3", "/scripts/probe.py"]',restart='Never',hami=('20000','25')),
+ 'MEM_HAMI_T': lambda gib: pod('memhog-${TEAM}','hami','["python3", "/scripts/memhog.py"]',[('GIB',gib)],hami=('20000','25')),
+ 'BURN_HAMI_T': lambda: pod('burn-${TEAM}','hami','["python3", "/scripts/burn.py"]',labels='{app: burn}',requests=True,hami=('20000','25')),
+ 'PROBE_MIG_T': lambda: pod('probe','mig','["bash", "-c", "nvidia-smi -L; python3 /scripts/probe.py"]',restart='Never'),
  'PROBE_EX':  lambda: pod('probe','ex','["bash", "-c", "nvidia-smi -L; python3 /scripts/probe.py"]',restart='Never'),
  'HOLD_EX':   lambda name: pod(name,'ex','["sleep", "infinity"]',labels='{app: hold}'),
  'BURN_TSJ':  lambda: pod('burn','tsj','["bash", "-c", "nvidia-smi -L; exec python3 /scripts/burn.py"]',[('DUTY','${DUTY:-1.0}')],labels='{app: burn, team: ${TEAM}}',requests=True),

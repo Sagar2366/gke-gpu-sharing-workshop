@@ -1,98 +1,14 @@
-# codelabs.yml: which source files make up each codelab, in order.
-#
-# Build with:   python3 tools/build_codelabs.py
-# Output:       docs/codelabs/<id>.md   (don't edit those, edit the sources)
-#
-# Per step:
-#   file:  source markdown (its first "# " heading and lesson-head block are dropped)
-#   vpath: where the source's relative links were written from (inside docs/)
-#   title: step title in the left list
-#   mins:  minutes, used for "N mins remaining"
-#   split: true = every "## " heading in the file becomes its own step
-#          (content before the first "## " becomes an "Introduction" step)
-
+# codelabs.yml: the workshop codelab. Build with:  python3 tools/build_codelabs.py
 defaults:
   author: DevFest Bengaluru
   updated: Nov 21, 2026
 
 codelabs:
-  - id: gpu-sharing-jarvislabs
-    title: "One GPU, Four Teams: from bare machines to shared GPUs"
+  - id: workshop
+    title: "One GPU, Four Teams: hands-on GPU sharing on Kubernetes"
     category: Workshop
-    variant: jarvislabs
     lean: true
-    duration: 90 min
-    summary: "Build a Kubernetes GPU cluster live, then hit and fix one real problem after another: invisible GPUs, whole-GPU hogging, noisy neighbours, memory crashes, and a real model on a shared GPU."
+    duration: 90 min live + 15 min prep
+    summary: Build a Kubernetes cluster from 3 Jarvislabs H200 VMs from your laptop, then time-slicing, NVIDIA MPS and MIG, a noisy neighbour, the gotchas, and Gemma on vLLM.
     steps:
-      - {title: Introduction, file: tools/build/labs/s01-intro.md, vpath: codelabs/_.md, mins: 3}
-      - {title: "Build the cluster, step by step", file: tools/build/labs/s02-build.md, vpath: codelabs/_.md, mins: 17}
-      - {title: Your first GPU pod, file: tools/build/labs/s03-first-pod.md, vpath: codelabs/_.md, mins: 8}
-      - {title: "Problem: one pod, one whole GPU", file: tools/build/labs/s04-whole-gpu.md, vpath: codelabs/_.md, mins: 7}
-      - {title: "Fix: time-slicing (and its problems)", file: tools/build/labs/s05-time-slicing.md, vpath: codelabs/_.md, mins: 15}
-      - {title: "NVIDIA's answers: MPS and MIG", file: tools/build/labs/s06-mps-mig.md, vpath: codelabs/_.md, mins: 6}
-      - {title: "Fix: HAMi memory and compute limits", file: tools/build/labs/s07-hami.md, vpath: codelabs/_.md, mins: 15}
-      - {title: A real model on a shared GPU, file: tools/build/labs/s08-vllm.md, vpath: codelabs/_.md, mins: 12}
-      - {title: Choose your fix, file: tools/build/labs/s09-choose.md, vpath: codelabs/_.md, mins: 4}
-      - {title: Clean up, file: tools/build/labs/s10-cleanup.md, vpath: codelabs/_.md, mins: 2}
-
-  - id: gpu-sharing-on-gke
-    title: "One GPU, Four Teams: hands-on GPU sharing on GKE"
-    category: Workshop
-    variant: gke
-    lean: true
-    duration: 90 min
-    summary: Share one NVIDIA GPU between four teams with time-sharing, NVIDIA MPS and MIG. Trigger a noisy neighbour, watch it in your monitoring, and serve Gemma with vLLM.
-    steps:
-      - {title: Introduction, file: tools/src/codelabs/workshop-intro.md, vpath: codelabs/_.md, mins: 3}
-      - title: Before you begin
-        mins: 17
-        parts:
-          - {file: tools/src/codelabs/workshop-live-build.md, vpath: codelabs/_.md}
-          - {file: tools/build/labs/00-setup.md, vpath: labs/00-setup.md}
-      - {title: How GKE gives a pod a GPU, file: tools/build/labs/01-gpu-to-pod.md, vpath: labs/01-gpu-to-pod.md, mins: 8}
-      - {title: GPU time-sharing, file: tools/build/labs/02-time-sharing.md, vpath: labs/02-time-sharing.md, mins: 17}
-      - {title: Watch it in Cloud Monitoring, file: tools/build/labs/03-monitoring.md, vpath: labs/03-monitoring.md, mins: 5}
-      - {title: NVIDIA MPS, file: tools/build/labs/04-mps.md, vpath: labs/04-mps.md, mins: 12}
-      - {title: Multi-instance GPU, file: tools/build/labs/05-mig.md, vpath: labs/05-mig.md, mins: 6}
-      - {title: Serve Gemma with vLLM, file: tools/build/labs/06-gemma-vllm.md, vpath: labs/06-gemma-vllm.md, mins: 12}
-      - {title: "Finale: the Astronomy Shop", file: tools/build/labs/06b-finale.md, vpath: labs/06b-finale.md, mins: 4}
-      - {title: Choose a strategy, file: tools/build/labs/07-decision-guide.md, vpath: labs/07-decision-guide.md, mins: 3}
-      - {title: Clean up, file: tools/src/codelabs/workshop-cleanup.md, vpath: codelabs/_.md, mins: 1}
-      - {title: Congratulations, file: tools/src/codelabs/workshop-congrats.md, vpath: codelabs/_.md, mins: 0}
-
-  - id: jarvislabs-solo
-    title: "Run the GPU sharing labs on one Jarvislabs GPU VM"
-    category: Take home
-    duration: 90 min + VM setup
-    summary: Build the workshop's Kubernetes GPU cluster yourself on a single Jarvislabs L4 VM with the same scripts, then play all four teams.
-    steps:
-      - {file: tools/src/jarvislabs-solo.md, vpath: codelabs/jarvislabs-solo-src.md, split: true, mins: [3, 5, 5, 25, 15, 3, 60, 10, 2]}
-
-  - id: foundations
-    title: "GPU sharing foundations: the main points in 10 minutes"
-    category: Get started
-    duration: 10 min
-    summary: New to Kubernetes, GPUs or the cloud? Just the main points, with a picture and a quick check each.
-    steps:
-      - {title: Introduction, file: tools/src/learn/index.md, vpath: learn/index.md, mins: 1}
-      - {title: Accelerated compute, file: tools/src/learn/01-accelerated-compute.md, vpath: learn/01-accelerated-compute.md, mins: 2}
-      - {title: Kubernetes basics, file: tools/src/learn/03-kubernetes-basics.md, vpath: learn/03-kubernetes-basics.md, mins: 3}
-      - {title: Clusters and GPUs in the cloud, file: tools/src/learn/02-gpus-on-google-cloud.md, vpath: learn/02-gpus-on-google-cloud.md, mins: 2}
-      - {title: Sharing a GPU, file: tools/src/learn/05-sharing-strategies.md, vpath: learn/05-sharing-strategies.md, mins: 2}
-      - {title: Done, file: tools/src/codelabs/foundations-congrats.md, vpath: codelabs/_.md, mins: 0}
-
-  - id: own-project
-    title: "Run the GPU sharing labs in your own Google Cloud project"
-    category: Take home
-    duration: 60 min + quota wait
-    summary: Redeem your credits, create a project, get GPU quota, and repeat every workshop step on one cheap L4, click by click.
-    steps:
-      - {file: tools/src/own-project.md, vpath: reference/own-project.md, split: true, mins: [5, 5, 5, 5, 10, 30, 5]}
-
-  - id: planb-build
-    title: "Facilitator: build the workshop cluster on Jarvislabs (live)"
-    category: Facilitator
-    duration: prep the day before + 15 min live
-    summary: Prepare Jarvislabs GPU VMs the day before, then build the Kubernetes cluster live on stage with one command.
-    steps:
-      - {file: tools/src/planb-build.md, vpath: planb/build.md, split: true, mins: [3, 30, 60, 45, 15, 5, 5, 5]}
+      - {file: tools/build/labs/demo-workshop.md, vpath: codelabs/_.md, split: true, mins: [3, 15, 3, 3, 6, 6, 17, 8, 7, 12, 4, 3]}

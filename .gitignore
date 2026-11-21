@@ -5,3 +5,7 @@ attendees.csv
 me.csv
 scripts/jarvislabs/jl.conf
 scripts/jarvislabs/out/
+scripts/cluster/cluster.conf
+scripts/cluster/out/
+scripts/demo/demo.conf
+scripts/demo/out/

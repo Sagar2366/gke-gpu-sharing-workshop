@@ -1,0 +1,19 @@
+# cluster.conf: the instructor's demo cluster (laptop control plane + Jarvislabs GPU VMs over Tailscale).
+# cp cluster.conf.example cluster.conf  and fill in. Never commit cluster.conf (it's in .gitignore).
+
+# Tailscale auth key (admin console → Settings → Keys → Generate auth key; reusable + ephemeral is handy)
+export TS_AUTHKEY="tskey-auth-CHANGE-ME"
+
+# Multipass VM on your Mac that runs the control plane
+export CP_VM="k3s-cp"
+export CP_CPUS=4
+export CP_MEM=8G
+
+# Your Jarvislabs GPU VMs: "<ssh-ip> <node-name>", one per line, in the order you'll add them live
+export GPU_VMS="
+203.0.113.21 h200-1
+203.0.113.22 h200-2
+203.0.113.23 h200-3
+"
+export SSH_USER=root
+export SSH_KEY="$HOME/.ssh/id_ed25519"
