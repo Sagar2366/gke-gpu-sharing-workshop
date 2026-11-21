@@ -113,7 +113,7 @@ New projects are usually allowed **0 GPUs**. You need to ask for 1.
 ### 5.1 Get the files and point them at your project
 
 ```bash
-git clone https://github.com/YOUR-ORG/gke-gpu-sharing-workshop.git
+git clone https://github.com/Sagar2366/gke-gpu-sharing-workshop.git
 cd gke-gpu-sharing-workshop
 sed -i "s/^export WORKSHOP_PROJECT=.*/export WORKSHOP_PROJECT=\"$(gcloud config get project)\"/" workshop.conf
 grep WORKSHOP_PROJECT workshop.conf      # should show your project ID

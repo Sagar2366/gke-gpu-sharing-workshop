@@ -66,7 +66,7 @@ title: "Facilitator: build the workshop cluster on Jarvislabs (live)"
 
 !!! step "Fill in the inventory"
     ```bash
-    git clone https://github.com/YOUR-ORG/gke-gpu-sharing-workshop.git && cd gke-gpu-sharing-workshop
+    git clone https://github.com/Sagar2366/gke-gpu-sharing-workshop.git && cd gke-gpu-sharing-workshop
     cp scripts/jarvislabs/jl.conf.example scripts/jarvislabs/jl.conf
     openssl rand -hex 8        # use this as KC_SECRET
     ```

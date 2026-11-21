@@ -1,16 +1,25 @@
 # Cheat sheet
 
-## Jarvislabs demo cluster
+## Lab 1 cluster (kubeadm on 3 H200s)
 
 ```bash
-source scripts/demo/env.sh                        # in every terminal
-kubectl get nodes -L workshop.devfest/gpu-mode \
-  -o custom-columns='NODE:.metadata.name,MODE:.metadata.labels.workshop\.devfest/gpu-mode,GPU:.status.allocatable.nvidia\.com/gpu'
-NODE=h200-1 ./scripts/k8s/mode.sh ts              # exclusive | ts | mps | mig | hami
-export TABLE=h200-1                               # where pod.sh puts pods
-./scripts/k8s/pod.sh burn dosa idli               # burn-cpu | burn-gpu | hold | burn | memhog <team> <GiB> | probe | greedy
-./scripts/k8s/pod.sh burn dosa --show             # print the YAML instead
-TEAM=dosa GPU_UTIL=0.2 ./scripts/k8s/gemma.sh     # Gemma on vLLM, 20% of the GPU
+source ~/gpu-demo.env                                                     # H1-3, P1-3, KUBECONFIG, IMAGE, MODEL
+kubectl get nodes -o custom-columns='NODE:.metadata.name,GPU:.status.allocatable.nvidia\.com/gpu'
+kubectl label node h200-1 nvidia.com/device-plugin.config=ts4 --overwrite   # time-slicing x4
+kubectl label node h200-2 nvidia.com/device-plugin.config=mps4 --overwrite  # MPS x4 (pods need hostIPC: true)
+kubectl label node h200-3 nvidia.com/mig.config=all-1g.18gb nvidia.com/device-plugin.config=mig --overwrite   # MIG x7
+kubectl label node h200-1 nvidia.com/device-plugin.config=none --overwrite  # back to one pod per GPU
+kubectl label node h200-2 nvidia.com/gpu.deploy.device-plugin=false gpu=on --overwrite   # hand h200-2 to HAMi
+JOIN=$(ssh root@$H1 kubeadm token create --print-join-command); ssh root@$H2 "$JOIN --node-name h200-2"   # join a node
+```
+
+## Lab 2 cluster (kind + fake A100s)
+
+```bash
+kubectl get node hami-lab-control-plane -o json | jq '.status.allocatable | with_entries(select(.key | startswith("nvidia.com")))'
+kubectl get pod <pod> -o jsonpath='{.metadata.annotations.hami\.io/vgpu-devices-allocated}{"\n"}'   # which card HAMi picked
+kubectl get pod <pod> -o jsonpath='{.spec.schedulerName}{"\n"}'                                     # hami-scheduler?
+kind delete cluster --name hami-lab
 ```
 
 | Mode | Device plugin config | `nvidia.com/gpu` per H200 | Pod needs |

@@ -13,11 +13,13 @@ hide:
 ## Hands-on GPU sharing on Kubernetes
 
 GPUs are the most expensive machines in a cluster, and not every workload needs a whole one.
-See how Kubernetes exposes and hands out GPUs, then try all three ways to share one: **time-slicing**, **NVIDIA MPS** and **MIG**.
-**No Kubernetes, GPU or cloud experience needed.**
+See how Kubernetes exposes and hands out GPUs, then four ways to share one: **time-slicing**, **NVIDIA MPS**, **MIG** and **HAMi**.
+**No GPU needed on your laptop.**
 
-[Jarvislabs demo :material-arrow-right:](codelabs/jarvislabs-demo.md){ .md-button .md-button--primary }
-[New here? Foundations first](codelabs/foundations.md){ .md-button }
+**1 · Concepts** → **2 · Lab 1: real GPUs, live** (instructor) → **3 · Lab 2: HAMi on your laptop** (you)
+
+[Start with the concepts :material-arrow-right:](codelabs/concepts.md){ .md-button .md-button--primary }
+[Lab 2: set up at home first](codelabs/hami-laptop.md#2){ .md-button }
 
 </div>
 
@@ -25,11 +27,25 @@ See how Kubernetes exposes and hands out GPUs, then try all three ways to share 
 
 <div class="catalog">
 
+<a class="catalog-card" href="codelabs/concepts.html">
+  <span class="cc-cat">Part 1 · Concepts</span>
+  <span class="cc-title">From a GPU chip to a shared GPU</span>
+  <p class="cc-desc">The GPU stack in 5 layers, how Kubernetes hands out a GPU, four ways to share one, and how HAMi works.</p>
+  <span class="cc-foot"><span>15 min</span><span class="cc-start">Start</span></span>
+</a>
+
 <a class="catalog-card" href="codelabs/jarvislabs-demo.html">
-  <span class="cc-cat">Workshop · Jarvislabs demo</span>
-  <span class="cc-title">A 3-VM Jarvislabs demo with kubeadm</span>
-  <p class="cc-desc">From your laptop: a kubeadm cluster on 3 H200 VMs in one private network, the device plugin, time-slicing, MPS, MIG, the gotchas, and Gemma on vLLM.</p>
-  <span class="cc-foot"><span>90 min · instructor-led</span><span class="cc-start">Start</span></span>
+  <span class="cc-cat">Part 2 · Lab 1 · instructor</span>
+  <span class="cc-title">Real GPUs, live</span>
+  <p class="cc-desc">kubeadm + Cilium on 3 H200s, then time-slicing, MPS, MIG and HAMi, each broken on purpose, Gemma on vLLM, and the GKE way of each.</p>
+  <span class="cc-foot"><span>35 min · watch along</span><span class="cc-start">Start</span></span>
+</a>
+
+<a class="catalog-card" href="codelabs/hami-laptop.html">
+  <span class="cc-cat">Part 3 · Lab 2 · hands-on</span>
+  <span class="cc-title">HAMi on your laptop</span>
+  <p class="cc-desc">No GPU needed: kind, two fake A100s and the real HAMi scheduler. Slices, a request that doesn't fit, binpack vs spread.</p>
+  <span class="cc-foot"><span>35 min · your laptop</span><span class="cc-start">Start</span></span>
 </a>
 
 <a class="catalog-card" href="codelabs/foundations.html">

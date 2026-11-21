@@ -16,14 +16,32 @@ defaults:
   updated: Nov 21, 2026
 
 codelabs:
-  - id: jarvislabs-demo
-    title: "One GPU, Four Teams: a 3-VM Jarvislabs demo with kubeadm"
-    category: Workshop · Jarvislabs demo
+  - id: concepts
+    title: "Concepts: from a GPU chip to a shared GPU in Kubernetes"
+    category: "Part 1 · Concepts"
     lean: true
-    duration: 90 min live + prep the day before
-    summary: From your laptop, build a kubeadm cluster from 3 Jarvislabs H200 VMs on one private network, then time-slicing, NVIDIA MPS and MIG, a noisy neighbour, the gotchas, and Gemma on vLLM.
+    duration: 15 min
+    summary: The GPU software stack in 5 layers, how nvidia-smi reaches the GPU, how Kubernetes hands out a GPU, four ways to share one, and how HAMi works.
     steps:
-      - {file: tools/build/labs/demo-workshop.md, vpath: codelabs/_.md, split: true, mins: [3, 25, 10, 3, 6, 7, 15, 8, 7, 11, 4, 3]}
+      - {file: tools/build/labs/concepts.md, vpath: codelabs/_.md, split: true, mins: [1, 2, 3, 2, 3, 4, 4, 1]}
+
+  - id: jarvislabs-demo
+    title: "Lab 1: real GPUs, live (kubeadm on 3 H200s, the GKE way alongside)"
+    category: "Part 2 · Lab 1 · instructor"
+    lean: true
+    duration: 35 min live + prep the day before
+    summary: Every command shown. Build a kubeadm + Cilium cluster from 3 Jarvislabs H200 VMs, then time-slicing, NVIDIA MPS, MIG and HAMi, each broken on purpose, Gemma on vLLM, and how GKE does each one.
+    steps:
+      - {file: tools/build/labs/demo-workshop.md, vpath: codelabs/_.md, split: true, mins: [3, 30, 10, 3, 6, 6, 10, 6, 6, 8, 8, 3, 3]}
+
+  - id: hami-laptop
+    title: "Lab 2: HAMi on your laptop (no GPU needed)"
+    category: "Part 3 · Lab 2 · hands-on"
+    lean: true
+    duration: 35 min + 15 min at home
+    summary: kind, two fake A100s and the real HAMi scheduler. Four teams ask for GPU memory and compute, one request doesn't fit, binpack vs spread, and reserved vs used.
+    steps:
+      - {file: tools/build/labs/hami-laptop.md, vpath: codelabs/_.md, split: true, mins: [2, 15, 3, 3, 6, 5, 3, 5, 5, 2]}
 
   - id: gpu-sharing-jarvislabs
     title: "One GPU, Four Teams: from bare machines to shared GPUs"

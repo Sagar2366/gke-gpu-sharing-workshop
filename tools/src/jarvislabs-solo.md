@@ -51,7 +51,7 @@ You pay per minute while the VM exists. An L4 VM for 2 hours costs a few dollars
 
 !!! step "Clone the workshop repo"
     ```bash
-    git clone https://github.com/YOUR-ORG/gke-gpu-sharing-workshop.git
+    git clone https://github.com/Sagar2366/gke-gpu-sharing-workshop.git
     cd gke-gpu-sharing-workshop
     cp scripts/jarvislabs/jl.conf.example scripts/jarvislabs/jl.conf
     ```

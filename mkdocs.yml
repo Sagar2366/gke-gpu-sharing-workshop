@@ -2,7 +2,8 @@ site_name: "One GPU, Four Teams"
 site_description: "Hands-on GPU sharing on GKE: time-sharing, NVIDIA MPS and multi-instance GPU. DevFest Bengaluru workshop."
 site_author: "DevFest Bengaluru"
 copyright: "DevFest Bengaluru · One GPU, Four Teams workshop · CC BY 4.0"
-# repo_url: https://github.com/YOUR-ORG/gke-gpu-sharing-workshop
+repo_url: https://github.com/Sagar2366/gke-gpu-sharing-workshop
+site_url: https://sagar2366.github.io/gke-gpu-sharing-workshop/
 
 use_directory_urls: false   # lets the built site/ folder open straight from disk
 
@@ -68,8 +69,10 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Codelabs:
-      - "Jarvislabs demo (3 VMs, kubeadm)": codelabs/jarvislabs-demo.md
-      - "Foundations (start here)": codelabs/foundations.md
+      - "Part 1 · Concepts": codelabs/concepts.md
+      - "Part 2 · Lab 1: real GPUs, live": codelabs/jarvislabs-demo.md
+      - "Part 3 · Lab 2: HAMi on your laptop": codelabs/hami-laptop.md
+      - "Foundations (beginner primer)": codelabs/foundations.md
       - "Workshop: from bare machines to shared GPUs": codelabs/gpu-sharing-jarvislabs.md
       - "Workshop (GKE edition)": codelabs/gpu-sharing-on-gke.md
       - "Take home: one Jarvislabs GPU VM": codelabs/jarvislabs-solo.md

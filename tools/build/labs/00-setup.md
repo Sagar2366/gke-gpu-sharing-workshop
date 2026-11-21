@@ -34,7 +34,7 @@
     Open **[shell.cloud.google.com](https://shell.cloud.google.com)**, sign in, then run:
 
     ```bash
-    git clone https://github.com/YOUR-ORG/gke-gpu-sharing-workshop.git
+    git clone https://github.com/Sagar2366/gke-gpu-sharing-workshop.git
     cd gke-gpu-sharing-workshop
     ```
 

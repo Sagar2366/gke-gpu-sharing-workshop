@@ -5,7 +5,7 @@
 ## One GPU, Four Teams · Table **t\_\_\_**
 
 **1.** Go to **shell.cloud.google.com** and sign in with the Google account you registered with.<br>
-**2.** `git clone https://github.com/YOUR-ORG/gke-gpu-sharing-workshop.git && cd gke-gpu-sharing-workshop`<br>
+**2.** `git clone https://github.com/Sagar2366/gke-gpu-sharing-workshop.git && cd gke-gpu-sharing-workshop`<br>
 **3.** `source scripts/attendee/setup.sh t___ <team>`<br>
 **Lab guide:** `https://YOUR-SITE`
 

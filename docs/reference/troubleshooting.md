@@ -62,49 +62,67 @@
 ??? failure "`echo $TABLE` prints nothing"
     This tab doesn't have your settings. Run `cd ~/gke-gpu-sharing-workshop && source scripts/attendee/setup.sh <table> <team>`.
 
-## Jarvislabs demo (3 VMs, kubeadm)
+## Lab 1: real GPUs (3 VMs, kubeadm)
 
-??? failure "`00-check.sh`: no SSH or no NVIDIA driver"
-    Check the IP and SSH key in `scripts/demo/demo.conf`, and that you created a **VM** (not a template instance) on Jarvislabs.
-    If SSH works but `nvidia-smi` doesn't, `01-prep.sh` installs a driver; reboot the VM when the log says so and re-run it.
+??? failure "No SSH, or `nvidia-smi` missing on a VM"
+    Check the IPs in `~/gpu-demo.env` and that you created a **VM** on Jarvislabs. No driver: on the VM,
+    `apt-get install -y ubuntu-drivers-common && ubuntu-drivers install --gpgpu && reboot`. Check the driver with `lsmod | grep nvidia`.
 
-??? failure "`kubectl` times out after `02-control-plane.sh`"
-    Port 6443 on the first VM's public IP isn't reachable from your laptop. Set `API_VIA=tunnel` in `demo.conf`, run
-    `./scripts/demo/tunnel.sh` (an SSH tunnel), and `./scripts/demo/02-control-plane.sh` again to rewrite the kubeconfig.
+??? failure "`kubectl` times out after `kubeadm init`"
+    Port 6443 on h200-1's public IP isn't reachable from your laptop. `ssh -fN -L 6443:$P1:6443 root@$H1`, then
+    `sed -i '' "s#https://$H1:6443#https://127.0.0.1:6443#" $KUBECONFIG`.
 
-??? failure "A node won't join (`03-join.sh`)"
-    `ssh root@<ip> journalctl -u kubelet -n 30`. Usual causes: the VMs can't reach each other on their **private** IPs (check
-    `PRIVATE_IP` in `demo.conf`, and `nc -vz <cp-private-ip> 6443` from that VM), or an old join left state behind
-    (`ssh root@<ip> kubeadm reset -f`, then re-run `03-join.sh`).
+??? failure "A node won't join"
+    `ssh root@<ip> journalctl -u kubelet -n 30`. Usual causes: the VMs can't reach each other on their **private** IPs
+    (`ssh root@$H2 "nc -zv -w3 $P1 6443"`), or an old join left state behind (`ssh root@<ip> kubeadm reset -f`, then join again).
 
 ??? failure "Node `NotReady` / Cilium pods not Running"
-    Right after `kubeadm init` this is expected until Cilium is installed. Afterwards: `kubectl -n kube-system get pods -l k8s-app=cilium` and
-    `kubectl -n kube-system logs ds/cilium --tail=30`. The VPC must allow the VMs to reach each other on TCP 4240 (health),
-    TCP 10250 (kubelet) and UDP 8472 (Cilium's VXLAN tunnel). `POD_CIDR` (10.244.0.0/16) must not overlap the VPC's range.
+    Right after `kubeadm init` this is expected until Cilium is installed. Afterwards: `kubectl -n kube-system get pods -l k8s-app=cilium`
+    and `kubectl -n kube-system logs ds/cilium --tail=30`. The VPC must allow TCP 4240, TCP 10250 and UDP 8472 between the VMs.
+    10.244.0.0/16 must not overlap the VPC's range.
 
 ??? failure "Pods stuck in `ContainerCreating`"
-    The ~10 GB image is still downloading on that node: `./scripts/demo/pulled.sh`. Pin `BASE_IMAGE` in `workshop.conf` to a tag so it
-    isn't re-checked each time.
+    The ~10 GB image is still downloading on that node: `ssh root@<ip> "crictl --runtime-endpoint unix:///run/containerd/containerd.sock images | grep vllm"`.
 
 ??? failure "Pod `Pending`: `Insufficient nvidia.com/gpu`"
-    Expected in steps 4 and 6. Elsewhere: all GPU slots on that node are taken (`kubectl get pods -o wide`), or the node's mode
-    is still switching (`./scripts/k8s/mode.sh` prints the GPU column; `kubectl get pods -n gpu-operator`).
-
-??? failure "Pod `Pending`: `didn't match Pod's node affinity/selector`"
-    `$TABLE` points at the wrong node. `echo $TABLE`, then `export TABLE=h200-1` (time-slicing), `h200-2` (MPS) or `h200-3` (MIG).
+    Expected in Problems 1 and 3. Elsewhere: all GPU slots on that node are taken (`kubectl get pods -o wide`), or the node's
+    label change is still being applied (`kubectl get pods -n gpu-operator`).
 
 ??? failure "MPS pod hangs or can't see the GPU"
-    MPS pods need `hostIPC: true`; `pod.sh` adds it when the node's mode is `mps`. Check: `kubectl get node h200-2 -L workshop.devfest/gpu-mode`.
+    MPS pods need `hostIPC: true` in the pod spec.
 
 ??? failure "MIG node never shows 7"
     `kubectl -n gpu-operator logs -l app=nvidia-mig-manager --tail=30`. If MIG mode can't be enabled inside the VM, show the MIG step as slides.
 
+??? failure "GPU pods on h200-1 or h200-3 stay `Pending` after installing HAMi"
+    HAMi's webhook sends **every** GPU pod to `hami-scheduler`, which only manages `gpu=on` nodes. Add the label
+    `hami.io/webhook: ignore` to pods meant for the other nodes, or run the HAMi step last (as the codelab does).
+
 ??? failure "vLLM `CrashLoopBackOff`"
-    `Free memory on device … less than desired` is the gotcha in step 10: set `GPU_UTIL=0.2`. `401`/`gated repo`: the HF token
-    hasn't accepted the Gemma licence, or `HF_TOKEN` wasn't exported before `02-control-plane.sh` (re-run it).
+    `Free memory on device … less than desired` is the gotcha in the Gemma step: patch `--gpu-memory-utilization=0.2`. `401`/`gated repo`:
+    the HF token hasn't accepted the Gemma licence; recreate the secret: `kubectl delete secret hf-token`, then step 4 of *Build the cluster*.
 
 ??? failure "`curl: (7) Failed to connect to localhost port 8000`"
     The port-forward stopped: `kill %1; kubectl port-forward svc/gemma-dosa 8000:8000 >/dev/null 2>&1 &`.
 
 ??? failure "Grafana doesn't open"
     `kubectl -n monitoring port-forward svc/monitoring-grafana 3000:80`, then open `http://localhost:3000`.
+
+## Lab 2: HAMi on your laptop
+
+??? failure "`kind create cluster` fails"
+    Docker isn't running, or has too little memory. Start Docker Desktop/OrbStack/Colima and give it 4 CPUs and 8 GB.
+
+??? failure "`ErrImagePull` / `ImagePullBackOff`"
+    The image wasn't loaded into kind. `docker images` to check you pulled it, then `kind load docker-image <image> --name hami-lab`.
+
+??? failure "The node shows no `nvidia.com/gpumem`"
+    Wait 30 s and check again. Then `kubectl -n kube-system get pods | grep hami`: the mock device plugin must be Running, and the
+    node needs **both** the `nvidia.com/gpu=20` capacity patch and the `hami.io/node-nvidia-register` annotation.
+
+??? failure "Team pods stay `Pending` for minutes"
+    The mock monitor isn't finishing bookings: check it was installed with `--set completeBinds=true`
+    (`helm get values hami-mock-monitor -n kube-system`).
+
+??? failure "`kubectl get --raw ... /proxy/metrics` returns an error"
+    The pod name lookup found nothing: `kubectl -n kube-system get pods --show-labels | grep -E "hami-scheduler|mock-monitor"` and use that name.
