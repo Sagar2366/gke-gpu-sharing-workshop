@@ -67,12 +67,25 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Codelab: codelabs/workshop.md
+  - Codelabs:
+      - "Jarvislabs demo (3 VMs, kubeadm)": codelabs/jarvislabs-demo.md
+      - "Foundations (start here)": codelabs/foundations.md
+      - "Workshop: from bare machines to shared GPUs": codelabs/gpu-sharing-jarvislabs.md
+      - "Workshop (GKE edition)": codelabs/gpu-sharing-on-gke.md
+      - "Take home: one Jarvislabs GPU VM": codelabs/jarvislabs-solo.md
+      - "Take home: your own Google Cloud project": codelabs/own-project.md
+      - "Facilitator: build the table cluster live": codelabs/planb-build.md
   - Reference:
       - Cheat sheet: reference/cheatsheet.md
       - Troubleshooting: reference/troubleshooting.md
       - Glossary: reference/glossary.md
       - "HAMi: enforced GPU memory limits": reference/hami.md
-      - Beyond this cluster: reference/beyond-gke.md
+      - Beyond GKE: reference/beyond-gke.md
       - "What's next: AICR & Agent Substrate": reference/whats-next.md
-  - Run of show: facilitator/run-of-show.md
+  - Organisers:
+      - Facilitator guide: facilitator/index.md
+      - Run of show: facilitator/run-of-show.md
+      - Rehearsal checklist: facilitator/rehearsal.md
+      - Table card: facilitator/table-card.md
+      - "Plan B: overview & go/no-go": planb/index.md
+      - "Plan B: what changes for attendees": planb/differences.md

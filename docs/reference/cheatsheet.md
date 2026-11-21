@@ -1,6 +1,6 @@
 # Cheat sheet
 
-## This workshop's cluster
+## Jarvislabs demo cluster
 
 ```bash
 source scripts/demo/env.sh                        # in every terminal

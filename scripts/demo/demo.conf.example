@@ -1,19 +1,20 @@
 # demo.conf: your 3 Jarvislabs GPU VMs. Copy to demo.conf and fill in (it's git-ignored).
 
-# "<public-ip> <name>" per VM. The FIRST one also runs the Kubernetes control plane.
+# "<public-ip> <private-ip> <name>" per VM. The VMs talk to each other on the PRIVATE IPs (same VPC).
+# The FIRST VM also runs the Kubernetes control plane.
 export VMS="
-203.0.113.21 h200-1
-203.0.113.22 h200-2
-203.0.113.23 h200-3
+203.0.113.21 10.0.0.21 h200-1
+203.0.113.22 10.0.0.22 h200-2
+203.0.113.23 10.0.0.23 h200-3
 "
 export SSH_USER=root
 export SSH_KEY="$HOME/.ssh/id_ed25519"
 
-# Tailscale auth key (login.tailscale.com → Settings → Keys → Generate auth key, "reusable").
-# The VMs talk to each other over Tailscale, so no firewall ports need opening between them.
-export TS_AUTHKEY="tskey-auth-CHANGE-ME"
-
 # How your laptop's kubectl reaches the control plane:
-#   public    = the first VM's public IP, port 6443 (simplest, if the port is open)
-#   tailscale = its Tailscale IP (install the Tailscale app on your laptop and log in to the same tailnet)
+#   public = the first VM's public IP, port 6443 (simplest, if the port is open to you)
+#   tunnel = an SSH tunnel through the first VM (always works if SSH works; run ./scripts/demo/tunnel.sh)
 export API_VIA=public
+
+export K8S_MINOR=v1.36              # Kubernetes minor version for kubeadm/kubelet
+export POD_CIDR=10.244.0.0/16       # pod IP range (must not overlap the VPC's private range)
+export CILIUM_VERSION=              # Cilium Helm chart version; empty = latest. Pin it after rehearsal.

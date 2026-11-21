@@ -8,7 +8,7 @@ on purpose, the gotchas that surprise teams, and **Gemma served with vLLM** on a
 ```mermaid
 flowchart LR
   L["Laptop<br/>kubectl + scripts"] -- "SSH + kubectl" --> CP
-  subgraph JL["Jarvislabs: 3 × H200, linked by Tailscale"]
+  subgraph JL["Jarvislabs: 3 × H200 in one private network (VPC)"]
     CP["h200-1<br/>control plane + GPU"]
     N2["h200-2<br/>GPU"]
     N3["h200-3<br/>GPU"]
@@ -27,8 +27,9 @@ flowchart LR
 **The four teams:** :material-food: **Dosa** (chat assistant) · :material-rice: **Idli** (greedy batch job) ·
 :material-cookie: **Vada** (notebook) · :material-tea: **Chai** (evaluations). Each team's work is a pod named after it.
 
-**You need:** 3 × H200 **VMs** on Jarvislabs with your SSH key · a laptop with `kubectl`, `helm`, `jq` · a free
-**Tailscale** account · a **Hugging Face** token with Gemma access · this repo.
+**You need:** 3 × H200 **VMs** on Jarvislabs in the **same private network**, with your SSH key · a laptop with `kubectl`,
+`helm`, `jq` · a **Hugging Face** token with Gemma access · this repo. The cluster is built with **kubeadm**, the standard
+Kubernetes installer, with **Cilium** as the pod network.
 
 **Time:** 90 minutes live, plus ~15 minutes of prep the day before.
 
@@ -44,55 +45,177 @@ flowchart LR
 
 !!! step "Describe your 3 VMs"
     ```bash
-    # your settings: VM public IPs + names, SSH key, Tailscale auth key
+    # your settings: each VM's public IP, private IP and name, plus your SSH key
     cp scripts/demo/demo.conf.example scripts/demo/demo.conf && open -e scripts/demo/demo.conf
+    # load them: $H1 $H2 $H3 = public IPs, $P1 $P2 $P3 = private IPs (run in every new terminal)
+    source scripts/demo/env.sh
+    # let plain "ssh root@..." use your Jarvislabs key
+    ssh-add "$SSH_KEY"
     ```
 
-    Tailscale key: [login.tailscale.com](https://login.tailscale.com) → **Settings → Keys → Generate auth key** (tick *Reusable*).
+    The **private IPs** (same VPC) are what the VMs use to talk to each other. Find them in the Jarvislabs console, or with
+    `ssh root@$H1 hostname -I`.
 
 !!! step "Check everything"
     ```bash
     # your Hugging Face token, only kept in this terminal
     export HF_TOKEN=hf_...
-    # checks laptop tools, SSH to each VM, and each VM's GPU
+    # checks laptop tools, SSH to each VM, each VM's GPU and the private network
     ./scripts/demo/00-check.sh
     ```
 
     !!! see "You should see"
-        `OK` for every line, e.g. `h200-1: NVIDIA H200, 143771 MiB`.
+        `OK` for every line: each VM's GPU (`h200-1: NVIDIA H200, 143771 MiB`), its private IP, and that it reaches h200-1 privately.
 
-!!! step "Prepare the VMs"
+Next, prepare **each VM** for kubeadm. Do it by hand on **h200-1** (`ssh root@$H1`), then repeat on h200-2 and h200-3.
+
+!!! tip "Fast way: all 3 VMs at once"
+    `./scripts/demo/01-prep.sh` runs exactly the steps below on every VM in parallel (~10 min).
+    `OK   h200-1  >> Ready for kubeadm (v1.36.x)` for each one means you can skip to [Build the cluster](#3).
+
+!!! step "On the VM: check the GPU driver"
     ```bash
-    # on all 3 VMs: copy the repo, install the NVIDIA container toolkit + helm, join Tailscale (~5 min)
-    ./scripts/demo/01-prep.sh
+    # log in to the VM (run the rest of this section there)
+    ssh root@$H1
+    # the driver is installed if this lists the H200
+    nvidia-smi -L
+    ```
+
+    ??? failure "`nvidia-smi: command not found`"
+        `apt-get update && apt-get install -y ubuntu-drivers-common && ubuntu-drivers install --gpgpu && reboot`, then log in again.
+
+!!! step "On the VM: kernel settings Kubernetes needs"
+    ```bash
+    # Kubernetes needs swap off (now and after reboot)
+    swapoff -a && sed -i '/\sswap\s/ s/^/#/' /etc/fstab
+    # kernel modules for container networking
+    printf "overlay\nbr_netfilter\n" > /etc/modules-load.d/k8s.conf && modprobe overlay && modprobe br_netfilter
+    # let the VM forward pod traffic
+    printf "net.bridge.bridge-nf-call-iptables=1\nnet.bridge.bridge-nf-call-ip6tables=1\nnet.ipv4.ip_forward=1\n" > /etc/sysctl.d/99-k8s.conf && sysctl --system >/dev/null
+    ```
+
+!!! step "On the VM: NVIDIA Container Toolkit"
+    ```bash
+    # NVIDIA's package repository
+    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor --yes -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+    curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#' > /etc/apt/sources.list.d/nvidia-container-toolkit.list
+    # the toolkit: lets containers use the GPU
+    apt-get update -q && apt-get install -y -q nvidia-container-toolkit
+    ```
+
+!!! step "On the VM: containerd, with NVIDIA as the default runtime"
+    ```bash
+    # Jarvislabs images may run Docker: stop it so it doesn't fight containerd
+    systemctl stop docker docker.socket 2>/dev/null; systemctl disable docker docker.socket 2>/dev/null
+    # the container runtime Kubernetes talks to
+    apt-get install -y -q containerd
+    # its default config, using systemd cgroups (what the kubelet expects)
+    mkdir -p /etc/containerd && containerd config default > /etc/containerd/config.toml && sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+    # make every container start through the NVIDIA runtime, then restart
+    nvidia-ctk runtime configure --runtime=containerd --set-as-default && systemctl restart containerd
+    ```
+
+!!! step "On the VM: kubeadm, kubelet and kubectl"
+    ```bash
+    # the Kubernetes package repository (v1.36)
+    mkdir -p /etc/apt/keyrings && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.36/deb/Release.key | gpg --dearmor --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.36/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
+    # install the three tools and stop apt from upgrading them
+    apt-get update -q && apt-get install -y -q kubelet kubeadm kubectl && apt-mark hold kubelet kubeadm kubectl
+    ```
+
+!!! step "On the VM: use the private network, and pre-pull images"
+    ```bash
+    # THIS VM's private IP, from demo.conf (h200-1 here; each VM uses its own)
+    NODE_IP=10.0.0.21
+    # the kubelet registers this node with its private IP, so nodes talk over the VPC
+    echo "KUBELET_EXTRA_ARGS=--node-ip=$NODE_IP" > /etc/default/kubelet && systemctl restart kubelet
+    # download Kubernetes' own images now, not during the demo
+    kubeadm config images pull
+    # start downloading the ~10 GB vLLM image in the background
+    nohup ctr -n k8s.io images pull docker.io/vllm/vllm-openai:latest >/var/log/workshop-image-pull.log 2>&1 &
+    # back to the laptop
+    exit
     ```
 
     !!! see "You should see"
-        `OK   h200-1  tailscale 100.x.y.z` for all three.
+        `kubeadm config images pull` lists `registry.k8s.io/kube-apiserver:v1.36.x`, `etcd`, `coredns` … all pulled.
 
-    ??? failure "FAIL: driver missing"
-        The log asks for a reboot: `ssh root@<ip> reboot`, wait a minute, run `01-prep.sh` again.
+    Now repeat this section on `ssh root@$H2` and `ssh root@$H3`.
 
 ## Build the cluster
 
-!!! step "Start Kubernetes"
+!!! step "1. Create the control plane on h200-1"
     ```bash
     # workshop settings for this terminal (run in every new terminal)
     source scripts/demo/env.sh
-    # your Hugging Face token (stored in the cluster as a secret for Gemma)
-    export HF_TOKEN=hf_...
-    # install k3s (a small, certified Kubernetes) on h200-1 and point kubectl at it (~1 min)
-    ./scripts/demo/02-control-plane.sh
-    # the machines in the cluster
-    kubectl get nodes
+    # kubeadm init: start the API server, scheduler, controller manager and etcd on h200-1, on its private IP (~1 min)
+    ssh root@$H1 kubeadm init --node-name h200-1 --apiserver-advertise-address $P1 --apiserver-cert-extra-sans $H1,127.0.0.1 --pod-network-cidr 10.244.0.0/16
     ```
 
     !!! see "You should see"
-        `h200-1   Ready   control-plane`. The ~10 GB workshop image is now downloading; `./scripts/demo/pulled.sh` shows progress.
+        `Your Kubernetes control-plane has initialized successfully!` and a `kubeadm join ...` line (we create a fresh one later).
+
+    ??? question "What do the flags mean?"
+        `--apiserver-advertise-address`: the other VMs reach the API server on the **private** IP. `--apiserver-cert-extra-sans`:
+        the certificate also accepts the **public** IP, so your laptop can connect. `--pod-network-cidr`: the IP range for pods;
+        each node gets a `/24` slice of it.
+
+!!! step "2. kubectl on your laptop"
+    ```bash
+    # copy the admin kubeconfig to the laptop, pointing it at h200-1's public IP
+    ssh root@$H1 cat /etc/kubernetes/admin.conf | sed "s#server: https://.*:6443#server: https://$API_HOST:6443#" > $KUBECONFIG
+    # the machines in the cluster
+    kubectl get nodes
+    # the control plane's own pods
+    kubectl get pods -n kube-system
+    ```
 
     ??? failure "kubectl times out"
-        Port 6443 on the VM's public IP is probably blocked. Install the Tailscale app on your laptop (same account), set
-        `API_VIA=tailscale` in `demo.conf`, and run `02-control-plane.sh` again.
+        Port 6443 on the public IP isn't open to your laptop. Set `API_VIA=tunnel` in `demo.conf`, run `./scripts/demo/tunnel.sh`
+        (an SSH tunnel), `source scripts/demo/env.sh`, and repeat this step.
+
+!!! problem "The node is `NotReady`"
+    `h200-1   NotReady   control-plane`, and the two `coredns` pods are `Pending`. kubeadm doesn't include a **pod network**,
+    so pods can't get IP addresses yet.
+
+!!! solution "3. Fix: install Cilium as the pod network"
+    ```bash
+    # Cilium's Helm chart
+    helm repo add cilium https://helm.cilium.io/ && helm repo update cilium
+    # Cilium: VXLAN tunnel between the VMs' private IPs; pod IPs from each node's 10.244.x.0/24 slice (kubeadm's range)
+    helm install cilium cilium/cilium -n kube-system --set routingMode=tunnel --set tunnelProtocol=vxlan --set ipam.mode=kubernetes
+    # wait for the Cilium agent and operator (~1-2 min)
+    kubectl -n kube-system rollout status ds/cilium && kubectl -n kube-system rollout status deploy/cilium-operator
+    # Ready now, and coredns Running
+    kubectl get nodes; kubectl get pods -n kube-system
+    ```
+
+    !!! see "You should see"
+        `daemon set "cilium" successfully rolled out`, then `h200-1   Ready   control-plane`.
+
+    ??? note "Same as the VirtualBox + Tailscale version, minus two things"
+        No `MTU=1280` (that was only for Tailscale's smaller packets; the VPC uses the normal MTU) and no Tailscale IPs: everything
+        uses the VPC private IPs. `ipam.mode=kubernetes` is new: Cilium's default pod range is `10.0.0.0/8`, which can clash with a `10.x` VPC.
+
+    ??? why "Why Cilium?"
+        It's a CNCF graduated pod network built on **eBPF** (programs in the Linux kernel), so it's fast and comes with network policy
+        and observability (Hubble). Between VMs it uses a VXLAN tunnel over the private IPs, so the VPC needs no extra routes.
+
+!!! step "4. Get h200-1 ready for workshop pods"
+    ```bash
+    # h200-1 has a GPU too: remove the "control plane only" taint so it runs workloads
+    kubectl taint nodes h200-1 node-role.kubernetes.io/control-plane:NoSchedule-
+    # labels the workshop scripts use to find GPU nodes
+    kubectl label node h200-1 workshop.devfest/gpu=true workshop.devfest/table=h200-1
+    # the small Python programs the demo pods run
+    kubectl create configmap gpu-scripts --from-file=workloads/probe.py --from-file=workloads/burn.py --from-file=workloads/memhog.py
+    # your Hugging Face token, stored in the cluster for Gemma
+    kubectl create secret generic hf-token --from-literal=token="$HF_TOKEN"
+    ```
+
+!!! tip "Shortcut"
+    `./scripts/demo/02-control-plane.sh` runs steps 1 to 4 in one go (useful for rehearsals and re-runs).
 
 ## Problem 1: does it need a GPU?
 
@@ -129,7 +252,7 @@ flowchart LR
 !!! problem "The machine has a GPU, but Kubernetes doesn't know"
     ```bash
     # the VM itself sees its H200...
-    ssh root@$CP_IP nvidia-smi -L
+    ssh root@$H1 nvidia-smi -L
     # ...but the node advertises no nvidia.com/gpu
     kubectl describe node h200-1 | grep -A6 Allocatable
     ```
@@ -163,17 +286,28 @@ flowchart LR
 
 ## Problem 3: one pod, one whole GPU
 
-!!! step "Add the other two GPU machines"
+!!! step "Add the other two GPU machines (kubeadm join)"
     ```bash
-    # join h200-2 and h200-3 to the cluster (~1 min each)
-    ./scripts/demo/03-join.sh h200-2
-    ./scripts/demo/03-join.sh h200-3
+    # a fresh join command from the control plane: its private address, a token and the CA certificate hash
+    JOIN=$(ssh root@$H1 kubeadm token create --print-join-command); echo $JOIN
+    # h200-2 and h200-3 join over the private network (~1 min each)
+    ssh root@$H2 "$JOIN --node-name h200-2"
+    ssh root@$H3 "$JOIN --node-name h200-3"
+    # mark them as workshop GPU nodes
+    kubectl label node h200-2 workshop.devfest/gpu=true workshop.devfest/table=h200-2
+    kubectl label node h200-3 workshop.devfest/gpu=true workshop.devfest/table=h200-3
+    # Cilium starts on the new nodes; wait, then all 3 are Ready, with their private IPs
+    kubectl -n kube-system rollout status ds/cilium; kubectl get nodes -o wide
     # every GPU in "exclusive" mode: 1 GPU = 1 pod
     ./scripts/k8s/mode.sh exclusive
     ```
 
     !!! see "You should see"
-        `h200-1 1`, `h200-2 1`, `h200-3 1` in the GPU column.
+        Three `Ready` nodes with `INTERNAL-IP` = the private IPs, then `h200-1 1`, `h200-2 1`, `h200-3 1` in the GPU column.
+
+    ??? failure "A node stays `NotReady` or the join hangs"
+        `ssh root@$H2 journalctl -u kubelet -n 30`. Check the VPC lets the VMs reach each other on TCP 6443, 10250, 4240 and UDP 8472
+        (Cilium's tunnel). To retry: `ssh root@$H2 kubeadm reset -f`, then join again. Shortcut: `./scripts/demo/03-join.sh h200-2`.
 
 !!! step "Four teams, three GPUs"
     ```bash
@@ -463,11 +597,14 @@ flowchart LR
 
 !!! step "Tear everything down"
     ```bash
-    # uninstall k3s and log every VM out of Tailscale
-    ./scripts/demo/99-cleanup.sh
+    # kubeadm reset: undo init/join on every VM, and remove the CNI config
+    for ip in $H3 $H2 $H1; do ssh root@$ip "kubeadm reset -f; rm -rf /etc/cni/net.d"; done
+    # forget the cluster on the laptop
+    rm -f $KUBECONFIG
     ```
 
-    Then **delete the 3 VMs** in the Jarvislabs console, and revoke the **Tailscale key** and the **Hugging Face token**.
+    Then **delete the 3 VMs** in the Jarvislabs console, and revoke the **Hugging Face token**.
+    (`./scripts/demo/99-cleanup.sh` does the reset too.)
 
 !!! success "Done"
     From three bare GPU machines to a shared GPU cluster: how Kubernetes exposes and hands out GPUs, all three sharing strategies,
